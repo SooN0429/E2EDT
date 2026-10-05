@@ -66,7 +66,7 @@ DEFAULTS = {
     "trigger_dir": "",                          # 空= dataset_root/Attack_trigger_image
     "generated_root": "",                       # 空= dataset_root/generated
     "extracted_layer": "7_point",
-    "blended_alpha": 0.2,
+    "blended_alpha": 0.5,
     "seed": 0,
     "keep_generated": False,
     "feature_batch_size": 32,

@@ -21,6 +21,9 @@ training_report/
 # node_dataset: per-node image splits (train/val/test), not scripts
 node_dataset/node_*/
 
+# IDE設定檔
+pyrightconfig.json
+
 # System
 .DS_Store
 Thumbs.db
