@@ -1,0 +1,28 @@
+# Python / virtual environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Model checkpoints
+*.pth
+*.pt
+checkpoints/
+
+# Training / experiment outputs
+training_report/
+**/generated/
+**/features/
+*.npy
+
+# node_dataset: per-node image splits (train/val/test), not scripts
+node_dataset/node_*/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Attack trigger assets under node_dataset/Attack_trigger_image/ are tracked (small PNG/masks).
