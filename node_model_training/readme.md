@@ -8,7 +8,7 @@
 
 ```bash
 cd E2EDT/node_model_training
-source .venv/bin/activate
+source ../.venv/bin/activate   # 整包 E2EDT 共用環境（本目錄 .venv 為指向 ../.venv 的符號連結）
 python node_training.py
 ```
 
