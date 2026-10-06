@@ -1,5 +1,7 @@
 # node_model_training
 
+資料生成（`node_dataset/node_traindata_generate.py`）採 VBD MaskBlended：方塊/grid 類 trigger 在有毒圖上為**絕對 3×3**（不隨 32/64 資產畫布等比放大）；hello_kitty 仍整圖 resize。
+
 ## 主要執行
 
 - **`node_training.py`**：訓練各節點的入口腳本。  

@@ -8,7 +8,7 @@
 
 2) 常用覆寫（CLI 會覆蓋 DEFAULTS）：
    python node_training.py \\
-     --node_specs "node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean" \\
+     --node_specs "node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean;node_4=white_grid,green_square,clean" \\
      --blended_alpha 1 \\
      --extracted_layer 7_point \\
      --batch_size 8 --lr 0.0001 --epoch 150 \\
@@ -62,12 +62,12 @@ torch.backends.cudnn.benchmark = True
 # blended_alpha: 0=看不見 trigger；1=mask 區完全貼上 trigger（硬貼）
 # =============================================================================
 DEFAULTS = {
-    "node_specs": "node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean",
+    "node_specs": "node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean;node_4=white_grid,green_square,clean",
     "dataset_root": _NODE_DATASET_DIR,          # 相對路徑請從本腳本目錄執行時自行改
     "trigger_dir": "",                          # 空= dataset_root/Attack_trigger_image
     "generated_root": "",                       # 空= dataset_root/generated
     "extracted_layer": "7_point",
-    "blended_alpha": 0.5,
+    "blended_alpha": 0.7,
     "seed": 0,
     "keep_generated": False,
     "feature_batch_size": 32,
