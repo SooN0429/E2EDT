@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """Compute differential vectors from paired attack/clean images.
 
+Examples:
+  cd E2EDT/matching
+  source ../.venv/bin/activate
+  python diffvector_cal.py
+  # 可選：
+  #   --run_dir <training_report 某 run> # 未指定，則預設使用最新訓練方案
+  #   --extracted_layer 7_point
+  #   --keep_generated # 保留配對的攻擊/清潔圖片
+  #   --no_confirm_samples # 不保留確認用的paired data
+
 Method 1 (implemented): frozen ImageNet ResNet-18 intermediate features
   diff_vector = mean_i( flatten(f(attack_i)) - flatten(f(clean_i)) )
 

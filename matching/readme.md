@@ -57,11 +57,45 @@ python diffvector_cal.py
 |------|------|
 | `diffvector_data_generate.py` | 讀報告、生成 / 清理 paired 資料、複製確認範例 |
 | `diffvector_cal.py` | 編排整條管線 + 方法一差分向量計算 |
-| `diffvector_matching.py` | （尚未實作） |
+| `diffvector_matching.py` | 模擬配對：Coverage / \(\tau_{same}\) / 熱圖 / 首要轉移節點 |
+
+## 配對模擬（diffvector_matching）
+
+在已算出的 method1 差分向量上，模擬「目標節點應優先向誰轉移」：
+
+```bash
+cd E2EDT/matching
+source ../.venv/bin/activate
+python diffvector_matching.py --target_node node_2
+# 可選：--tau_same 0.7 --run_dir <某次 diffvector_results>
+```
+
+| 參數 | 說明 |
+|------|------|
+| `--target_node` | **必填**，目標節點（如 `node_2`） |
+| `--tau_same` | Coverage 門檻，預設 `0.7`；\(\ge\) 視為已具備，`<` 視為新穎 |
+| `--run_dir` | 指定 `diffvector_results` 下某 run；預設最新 |
+| `--matching_root` | 配對輸出根目錄，預設 `matching_result` |
+| `--method` | 目前僅 `method1_mean_diff` |
+
+**Coverage**（目標有多攻擊時）：候選攻擊對目標每一攻擊差分向量算餘弦後取 **max**。  
+在「新穎」候選中取 Coverage **最小**者為首要轉移攻擊，其所在節點為首要轉移節點；若無新穎候選則 `primary_transfer_node` 為 null。
+
+輸出在（與 `diffvector_results/<run_name>` 對齊的獨立目錄）：
+
+```text
+matching_result/<run_name>/matching_method1/
+  similarity_matrix.npy
+  labels.json
+  similarity_heatmap.png
+  pairing_result.json
+  pairing_summary.md
+```
 
 ## 結果怎麼看
 
-輸出根目錄：`matching/diffvector_results/<run_name>/`
+差分向量輸出根目錄：`matching/diffvector_results/<run_name>/`  
+配對結果輸出根目錄：`matching/matching_result/<run_name>/matching_method1/`
 
 ```text
 diffvector_results/<run_name>/
@@ -76,6 +110,11 @@ diffvector_results/<run_name>/
     node_2/00_white_square.npy
     node_3/00_small_hello_kitty.npy
     node_3/01_color_grid.npy
+
+matching_result/<run_name>/matching_method1/   # 跑 diffvector_matching.py 後產生
+  similarity_heatmap.png
+  pairing_summary.md
+  ...
 ```
 
 ### 確認圖對不對
