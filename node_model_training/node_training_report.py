@@ -68,7 +68,7 @@ def make_run_dir(
     os.makedirs(training_note_root, exist_ok=True)
     name = run_name.strip() if run_name else default_run_name(node_specs)
     run_dir = unique_run_dir(training_note_root, name)
-    for sub in ("data_samples", "epoch_logs", "results"):
+    for sub in ("data_samples", "epoch_logs", "results", "checkpoints"):
         os.makedirs(os.path.join(run_dir, sub), exist_ok=True)
     print(f"[INFO] training report dir: {run_dir}")
     return run_dir
@@ -88,16 +88,38 @@ def save_config(run_dir: str, opt: Any, node_specs: Dict[str, List[str]]) -> str
         "batch_size": getattr(opt, "batch_size", None),
         "lr": getattr(opt, "lr", None),
         "epoch": getattr(opt, "epoch", None),
-        "save_parameter_path": getattr(opt, "save_parameter_path", None),
-        "save_parameter_path_name": getattr(opt, "save_parameter_path_name", None),
         "gpu_id": getattr(opt, "gpu_id", None),
         "training_note_root": getattr(opt, "training_note_root", None),
         "run_name": getattr(opt, "run_name", None),
+        "checkpoint_dir": os.path.join(run_dir, "checkpoints"),
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
     path = os.path.join(run_dir, "config.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+    return path
+
+
+def save_checkpoint_index(
+    run_dir: str,
+    entries: Dict[str, Dict[str, Any]],
+) -> str:
+    """
+    Write checkpoints/index.json mapping each node to its .pth path and classes.
+
+    entries: {node_name: {"path": str, "classes": list[str], "filename": str}}
+    """
+    ckpt_dir = os.path.join(run_dir, "checkpoints")
+    os.makedirs(ckpt_dir, exist_ok=True)
+    index = {
+        "run_name": os.path.basename(run_dir),
+        "checkpoint_dir": ckpt_dir,
+        "nodes": entries,
+    }
+    path = os.path.join(ckpt_dir, "index.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(index, f, indent=2, ensure_ascii=False)
+    print(f"[INFO] saved checkpoint index -> {path}")
     return path
 
 

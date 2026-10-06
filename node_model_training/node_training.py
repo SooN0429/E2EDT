@@ -12,12 +12,13 @@
      --blended_alpha 1 \\
      --extracted_layer 7_point \\
      --batch_size 8 --lr 0.0001 --epoch 150 \\
-     --save_parameter_path ./checkpoints \\
      --run_name my_plan_alpha1 \\
      --gpu_id cuda:0
 
 3) 除錯：保留暫存生成資料
    python node_training.py --keep_generated --run_name debug_keep_gen
+
+權重固定寫入 training_report/<run_name>/checkpoints/（與該次報告同目錄）。
 """
 
 from __future__ import annotations
@@ -73,8 +74,6 @@ DEFAULTS = {
     "batch_size": 8,
     "lr": 0.0001,
     "epoch": 50,
-    "save_parameter_path": os.path.join(_SCRIPT_DIR, "checkpoints"),
-    "save_parameter_path_name": "",             # 空=自動 {node}_{classes}.pth
     "gpu_id": "cuda:0",
     "training_note_root": _DEFAULT_TRAINING_NOTE,
     "run_name": "",                             # 空=時間戳+方案名
@@ -356,18 +355,24 @@ def train_one_node(
             test_loss=test_result["loss"],
         )
 
-    if opt.save_parameter_path:
-        os.makedirs(opt.save_parameter_path, exist_ok=True)
-        class_tag = "_".join(class_names)
-        save_name = opt.save_parameter_path_name or f"{node_name}_{class_tag}.pth"
-        # If training multiple nodes with one shared name, prefix with node.
-        if opt.save_parameter_path_name and len(getattr(opt, "_node_specs", {})) > 1:
-            save_name = f"{node_name}_{opt.save_parameter_path_name}"
-        save_path = os.path.join(opt.save_parameter_path, save_name)
-        torch.save(model.state_dict(), save_path)
-        print("saved model to", save_path)
+    if not run_dir:
+        raise ValueError("run_dir is required to save checkpoints under training_report/")
 
-    return {"epoch_rows": epoch_rows, "test": test_result}
+    ckpt_root = os.path.join(run_dir, "checkpoints")
+    os.makedirs(ckpt_root, exist_ok=True)
+    class_tag = "_".join(class_names)
+    save_name = f"{node_name}_{class_tag}.pth"
+    save_path = os.path.join(ckpt_root, save_name)
+    torch.save(model.state_dict(), save_path)
+    print("saved model to", save_path)
+
+    return {
+        "epoch_rows": epoch_rows,
+        "test": test_result,
+        "checkpoint_path": save_path,
+        "checkpoint_filename": save_name,
+        "classes": list(class_names),
+    }
 
 
 def build_argparser():
@@ -399,10 +404,6 @@ def build_argparser():
     parser.add_argument("--batch_size", type=int, default=d["batch_size"])
     parser.add_argument("--lr", type=float, default=d["lr"])
     parser.add_argument("--epoch", type=int, default=d["epoch"])
-    parser.add_argument("--save_parameter_path", type=str, default=d["save_parameter_path"])
-    parser.add_argument(
-        "--save_parameter_path_name", type=str, default=d["save_parameter_path_name"]
-    )
     parser.add_argument("--gpu_id", type=str, default=d["gpu_id"])
 
     parser.add_argument(
@@ -479,8 +480,9 @@ if __name__ == "__main__":
                 n_per_class=5,
             )
 
+        ckpt_entries = {}
         for node_name, info in gen_results.items():
-            train_one_node(
+            train_out = train_one_node(
                 opt=opt,
                 node_name=node_name,
                 class_names=info["classes"],
@@ -492,6 +494,12 @@ if __name__ == "__main__":
                 kwargs=kwargs,
                 run_dir=run_dir,
             )
+            ckpt_entries[node_name] = {
+                "path": train_out["checkpoint_path"],
+                "classes": train_out["classes"],
+                "filename": train_out["checkpoint_filename"],
+            }
+        treport.save_checkpoint_index(run_dir, ckpt_entries)
         print(f"[INFO] training report saved at: {run_dir}")
     finally:
         if not opt.keep_generated and gen_results is not None:
