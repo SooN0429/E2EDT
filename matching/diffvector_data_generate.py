@@ -251,7 +251,11 @@ def _write_attack_clean_pairs_for_train(
             for src_path in chunk:
                 img = np.array(Image.open(src_path).convert("RGB"), dtype=np.uint8)
                 attack_img = apply_maskblended(
-                    img, trigger_rgb, blended_alpha, mask_rgb=mask_rgb
+                    img,
+                    trigger_rgb,
+                    blended_alpha,
+                    mask_rgb=mask_rgb,
+                    class_name=cname,
                 )
                 base = os.path.splitext(os.path.basename(src_path))[0]
                 out_name = f"{person_name}_{base}_{cname}.jpg"

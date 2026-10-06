@@ -4,6 +4,10 @@
 All attack classes use a companion mask image (VBD MaskBlended style):
   out = img*(1-mask) + (1-a)*(img*mask) + a*(trigger*mask)
   mask from *_mask.png with (R+G+B) != 0.
+
+Square/grid classes (ABS_PATCH_CLASSES) keep an absolute patch size on the
+poisoned image (VBD-style 3x3), independent of the trigger PNG canvas (32/64).
+Hello-kitty classes still full-frame resize to the host image.
 """
 
 from __future__ import annotations
@@ -41,6 +45,13 @@ TRIGGER_MASK_MAP = {
     "big_hello_kitty": "big_hello_kitty_mask.png",
     "small_hello_kitty": "small_hello_kitty_mask.png",
 }
+
+# Paste asset patch at absolute pixel size (no proportional upscale). Matches VBD
+# square/grid triggers that stay 3x3 on both CIFAR-10 and Tiny-ImageNet.
+ABS_PATCH_CLASSES = frozenset(
+    {"white_square", "green_square", "white_grid", "color_grid"}
+)
+EXPECTED_ABS_PATCH_HW = (3, 3)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 SPLITS = ("train", "val", "test")
@@ -167,15 +178,59 @@ def load_trigger_arrays(
     return loaded
 
 
+def _prepare_absolute_corner_patch(
+    trigger_rgb: np.ndarray,
+    mask_rgb: np.ndarray,
+    size_hw: Tuple[int, int],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Build HxW trigger/mask by pasting the asset mask bbox at the bottom-right
+    without scaling (VBD absolute 3x3 square/grid behaviour).
+    """
+    h, w = size_hw
+    nonzero = np.argwhere(mask_rgb.sum(axis=2) != 0)
+    if nonzero.size == 0:
+        raise ValueError("Absolute-patch mask has no nonzero pixels")
+    y0, x0 = nonzero.min(axis=0)
+    y1, x1 = nonzero.max(axis=0)
+    ph, pw = int(y1 - y0 + 1), int(x1 - x0 + 1)
+    if (ph, pw) != EXPECTED_ABS_PATCH_HW:
+        raise ValueError(
+            f"Expected absolute patch {EXPECTED_ABS_PATCH_HW}, got {(ph, pw)} "
+            f"from mask bbox [y{y0}:{y1}, x{x0}:{x1}]"
+        )
+    if ph > h or pw > w:
+        raise ValueError(
+            f"Absolute patch {(ph, pw)} does not fit host image {(h, w)}"
+        )
+
+    patch_t = trigger_rgb[y0 : y1 + 1, x0 : x1 + 1].astype(np.float32)
+    patch_m = mask_rgb[y0 : y1 + 1, x0 : x1 + 1]
+    mask_2d = (patch_m.sum(axis=2) != 0).astype(np.float32)
+
+    trigger = np.zeros((h, w, 3), dtype=np.float32)
+    mask = np.zeros((h, w, 3), dtype=np.float32)
+    trigger[h - ph : h, w - pw : w] = patch_t
+    mask[h - ph : h, w - pw : w] = np.stack([mask_2d, mask_2d, mask_2d], axis=-1)
+    return trigger, mask
+
+
 def prepare_trigger_for_size(
     trigger_rgb: np.ndarray,
     size_hw: Tuple[int, int],
     mask_rgb: np.ndarray,
+    class_name: Optional[str] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Resize trigger and mask to (H, W).
+    Prepare trigger and binary mask for host size (H, W).
+
+    Absolute-patch classes keep asset pixel size (typically 3x3) at the
+    bottom-right corner. Other classes full-frame BILINEAR resize (VBD kitty).
     Binary mask is VBD-style: (R+G+B) != 0.
     """
+    if class_name in ABS_PATCH_CLASSES:
+        return _prepare_absolute_corner_patch(trigger_rgb, mask_rgb, size_hw)
+
     h, w = size_hw
     trigger_img = Image.fromarray(trigger_rgb).resize((w, h), Image.BILINEAR)
     trigger = np.array(trigger_img, dtype=np.float32)
@@ -192,13 +247,16 @@ def apply_maskblended(
     trigger_rgb: np.ndarray,
     alpha: float,
     mask_rgb: np.ndarray,
+    class_name: Optional[str] = None,
 ) -> np.ndarray:
     """
     MaskBlended (VBD formula):
     out = img*(1-mask) + (1-a)*(img*mask) + a*(trigger*mask)
     """
     h, w = img_rgb.shape[:2]
-    trigger, mask = prepare_trigger_for_size(trigger_rgb, (h, w), mask_rgb=mask_rgb)
+    trigger, mask = prepare_trigger_for_size(
+        trigger_rgb, (h, w), mask_rgb=mask_rgb, class_name=class_name
+    )
     img = img_rgb.astype(np.float32)
     out = (
         img * (1.0 - mask)
@@ -260,7 +318,11 @@ def generate_split_for_node(
                     out_img = img
                 else:
                     out_img = apply_maskblended(
-                        img, trigger_rgb, blended_alpha, mask_rgb=mask_rgb
+                        img,
+                        trigger_rgb,
+                        blended_alpha,
+                        mask_rgb=mask_rgb,
+                        class_name=cname,
                     )
 
                 # Flat ImageFolder layout: split/class_dir/*.jpg (no person subdirs)
