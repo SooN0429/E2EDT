@@ -44,6 +44,7 @@ from node_traindata_generate import (  # noqa: E402
     list_images,
     list_person_dirs,
     load_trigger_arrays,
+    resolve_blended_alpha,
 )
 
 CONFIRM_PAIRED_SAMPLES_DIR = "confirm_paired_samples"
@@ -110,6 +111,20 @@ def _expected_train_counts(
     return out
 
 
+def _read_blended_alphas(cfg: Dict[str, Any]) -> Tuple[float, float]:
+    """
+    Read square / hello_kitty alphas from training config.
+
+    New configs store separate keys; legacy configs with only blended_alpha
+    apply that single value to both families (default 0.2 if missing entirely).
+    """
+    legacy = cfg.get("blended_alpha")
+    fallback = float(legacy) if legacy is not None else 0.2
+    alpha_square = cfg.get("blended_alpha_square", fallback)
+    alpha_hello_kitty = cfg.get("blended_alpha_hello_kitty", fallback)
+    return float(alpha_square), float(alpha_hello_kitty)
+
+
 def load_latest_training_plan(
     training_note_root: str = _DEFAULT_TRAINING_NOTE,
     run_dir: Optional[str] = None,
@@ -139,6 +154,7 @@ def load_latest_training_plan(
     }
     attack_classes = {n: _attack_classes(cs) for n, cs in node_specs.items()}
     expected_counts = _expected_train_counts(dataset_root, node_specs, quotas["train"])
+    alpha_square, alpha_hello_kitty = _read_blended_alphas(cfg)
 
     plan: Dict[str, Any] = {
         "run_dir": run_dir,
@@ -147,7 +163,8 @@ def load_latest_training_plan(
         "node_specs": node_specs,
         "attack_classes": attack_classes,
         "seed": int(cfg.get("seed", 0)),
-        "blended_alpha": float(cfg.get("blended_alpha", 0.2)),
+        "blended_alpha_square": alpha_square,
+        "blended_alpha_hello_kitty": alpha_hello_kitty,
         "extracted_layer": str(cfg.get("extracted_layer") or "7_point"),
         "dataset_root": dataset_root,
         "trigger_dir": trigger_dir,
@@ -161,7 +178,12 @@ def load_latest_training_plan(
 
 def print_plan_summary(plan: Dict[str, Any]) -> None:
     print(f"[INFO] latest report: {plan['run_dir']}")
-    print(f"[INFO] seed={plan['seed']} blended_alpha={plan['blended_alpha']} C_max={plan['c_max']}")
+    print(
+        f"[INFO] seed={plan['seed']} "
+        f"blended_alpha_square={plan['blended_alpha_square']} "
+        f"blended_alpha_hello_kitty={plan['blended_alpha_hello_kitty']} "
+        f"C_max={plan['c_max']}"
+    )
     print(f"[INFO] quotas (per-person per-class): {plan['quotas']}")
     print(f"[INFO] dataset_root={plan['dataset_root']}")
     print(f"[INFO] trigger_dir={plan['trigger_dir']}")
@@ -199,7 +221,8 @@ def _write_attack_clean_pairs_for_train(
     class_names: Sequence[str],
     triggers: Dict[str, Tuple[Optional[np.ndarray], Optional[np.ndarray]]],
     per_person_k: int,
-    blended_alpha: float,
+    blended_alpha_square: float,
+    blended_alpha_hello_kitty: float,
     rng: np.random.RandomState,
 ) -> Dict[str, int]:
     """
@@ -248,12 +271,15 @@ def _write_attack_clean_pairs_for_train(
             if trigger_rgb is None or mask_rgb is None:
                 raise RuntimeError(f"Missing trigger/mask for attack class '{cname}'")
 
+            alpha = resolve_blended_alpha(
+                cname, blended_alpha_square, blended_alpha_hello_kitty
+            )
             for src_path in chunk:
                 img = np.array(Image.open(src_path).convert("RGB"), dtype=np.uint8)
                 attack_img = apply_maskblended(
                     img,
                     trigger_rgb,
-                    blended_alpha,
+                    alpha,
                     mask_rgb=mask_rgb,
                     class_name=cname,
                 )
@@ -296,7 +322,8 @@ def generate_diffvector_paired_data(
     trigger_dir = plan["trigger_dir"]
     node_specs: Dict[str, List[str]] = plan["node_specs"]
     quotas: Dict[str, int] = plan["quotas"]
-    blended_alpha = float(plan["blended_alpha"])
+    blended_alpha_square = float(plan["blended_alpha_square"])
+    blended_alpha_hello_kitty = float(plan["blended_alpha_hello_kitty"])
     rng = np.random.RandomState(int(plan["seed"]))
 
     results: Dict[str, Any] = {
@@ -324,7 +351,8 @@ def generate_diffvector_paired_data(
                     class_names=class_names,
                     triggers=triggers,
                     per_person_k=quotas[split],
-                    blended_alpha=blended_alpha,
+                    blended_alpha_square=blended_alpha_square,
+                    blended_alpha_hello_kitty=blended_alpha_hello_kitty,
                     rng=rng,
                 )
                 print(f"[INFO] {node_name}/train attack counts={train_counts}")
@@ -354,7 +382,8 @@ def generate_diffvector_paired_data(
         "node_specs": plan["node_specs"],
         "attack_classes": plan["attack_classes"],
         "seed": plan["seed"],
-        "blended_alpha": plan["blended_alpha"],
+        "blended_alpha_square": plan["blended_alpha_square"],
+        "blended_alpha_hello_kitty": plan["blended_alpha_hello_kitty"],
         "dataset_root": plan["dataset_root"],
         "trigger_dir": plan["trigger_dir"],
         "c_max": plan["c_max"],

@@ -54,6 +54,7 @@ from node_traindata_generate import (  # noqa: E402
     list_images,
     list_person_dirs,
     load_trigger_arrays,
+    resolve_blended_alpha,
 )
 
 REFERENCE_MASK_ID = "reference_all_ones"
@@ -592,7 +593,8 @@ def generate_patch_dataset(
             "run_name": plan["run_name"],
             "config_path": plan["config_path"],
             "seed": plan["seed"],
-            "blended_alpha": plan["blended_alpha"],
+            "blended_alpha_square": plan["blended_alpha_square"],
+            "blended_alpha_hello_kitty": plan["blended_alpha_hello_kitty"],
             "dataset_root": plan["dataset_root"],
             "trigger_dir": plan["trigger_dir"],
             "quotas": plan["quotas"],
@@ -627,12 +629,17 @@ def generate_patch_dataset(
             # Safe relative path under masks/tensors mirrors image_id hierarchy.
             rel_id = image_id  # uses '/'
 
+            alpha = resolve_blended_alpha(
+                class_name,
+                float(plan["blended_alpha_square"]),
+                float(plan["blended_alpha_hello_kitty"]),
+            )
             x = poisoned_tensor_from_source(
                 source_face_path=sample["source_face_path"],
                 trigger_rgb=trigger_rgb,
                 mask_rgb=mask_rgb,
                 class_name=class_name,
-                blended_alpha=float(plan["blended_alpha"]),
+                blended_alpha=alpha,
                 transform=transform,
             )
 

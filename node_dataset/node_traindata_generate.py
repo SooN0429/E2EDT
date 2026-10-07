@@ -51,10 +51,27 @@ TRIGGER_MASK_MAP = {
 ABS_PATCH_CLASSES = frozenset(
     {"white_square", "green_square", "white_grid", "color_grid"}
 )
+HELLO_KITTY_CLASSES = frozenset({"big_hello_kitty", "small_hello_kitty"})
 EXPECTED_ABS_PATCH_HW = (3, 3)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 SPLITS = ("train", "val", "test")
+
+
+def resolve_blended_alpha(
+    class_name: str,
+    alpha_square: float,
+    alpha_hello_kitty: float,
+) -> float:
+    """Pick MaskBlended alpha by trigger family (square/grid vs hello_kitty)."""
+    if class_name in ABS_PATCH_CLASSES:
+        return float(alpha_square)
+    if class_name in HELLO_KITTY_CLASSES:
+        return float(alpha_hello_kitty)
+    raise ValueError(
+        f"No blended_alpha mapping for class '{class_name}'. "
+        f"Expected one of {sorted(ABS_PATCH_CLASSES | HELLO_KITTY_CLASSES)}."
+    )
 
 
 def parse_node_specs(node_specs: str) -> Dict[str, List[str]]:
@@ -278,7 +295,8 @@ def generate_split_for_node(
     class_names: Sequence[str],
     triggers: Dict[str, Tuple[Optional[np.ndarray], Optional[np.ndarray]]],
     per_person_k: int,
-    blended_alpha: float,
+    blended_alpha_square: float,
+    blended_alpha_hello_kitty: float,
     rng: np.random.RandomState,
 ) -> Dict[str, int]:
     """Create ImageFolder-style split under node_out_root/split/{idx_class}/..."""
@@ -317,10 +335,13 @@ def generate_split_for_node(
                 if cname == "clean" or trigger_rgb is None:
                     out_img = img
                 else:
+                    alpha = resolve_blended_alpha(
+                        cname, blended_alpha_square, blended_alpha_hello_kitty
+                    )
                     out_img = apply_maskblended(
                         img,
                         trigger_rgb,
-                        blended_alpha,
+                        alpha,
                         mask_rgb=mask_rgb,
                         class_name=cname,
                     )
@@ -468,7 +489,8 @@ def generate_all_nodes(
     node_specs: Dict[str, List[str]],
     trigger_dir: str,
     output_root: str,
-    blended_alpha: float,
+    blended_alpha_square: float,
+    blended_alpha_hello_kitty: float,
     extracted_layer: str,
     seed: int = 0,
     device: Optional[torch.device] = None,
@@ -485,6 +507,10 @@ def generate_all_nodes(
     node_names = list(node_specs.keys())
     c_max = max(len(classes) for classes in node_specs.values())
     print(f"[INFO] Selected nodes={node_names}, C_max={c_max}")
+    print(
+        f"[INFO] blended_alpha_square={blended_alpha_square} "
+        f"blended_alpha_hello_kitty={blended_alpha_hello_kitty}"
+    )
 
     quotas = {
         split: compute_per_person_quota(dataset_root, node_names, c_max, split)
@@ -515,7 +541,8 @@ def generate_all_nodes(
                 class_names=class_names,
                 triggers=triggers,
                 per_person_k=quotas[split],
-                blended_alpha=blended_alpha,
+                blended_alpha_square=blended_alpha_square,
+                blended_alpha_hello_kitty=blended_alpha_hello_kitty,
                 rng=rng,
             )
             split_counts[split] = counts
@@ -563,7 +590,8 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--trigger_dir", type=str, default="")
     parser.add_argument("--output_root", type=str, default="")
-    parser.add_argument("--blended_alpha", type=float, default=0.2)
+    parser.add_argument("--blended_alpha_square", type=float, default=0.7)
+    parser.add_argument("--blended_alpha_hello_kitty", type=float, default=0.3)
     parser.add_argument("--extracted_layer", type=str, default="7_point")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--feature_batch_size", type=int, default=32)
@@ -589,7 +617,8 @@ def main() -> None:
         node_specs=specs,
         trigger_dir=trigger_dir,
         output_root=output_root,
-        blended_alpha=args.blended_alpha,
+        blended_alpha_square=args.blended_alpha_square,
+        blended_alpha_hello_kitty=args.blended_alpha_hello_kitty,
         extracted_layer=args.extracted_layer,
         seed=args.seed,
         device=device,

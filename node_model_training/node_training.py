@@ -9,7 +9,8 @@
 2) 常用覆寫（CLI 會覆蓋 DEFAULTS）：
    python node_training.py \\
      --node_specs "node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean;node_4=white_grid,green_square,clean" \\
-     --blended_alpha 1 \\
+     --blended_alpha_square 1 \\
+     --blended_alpha_hello_kitty 0.3 \\
      --extracted_layer 7_point \\
      --batch_size 8 --lr 0.0001 --epoch 150 \\
      --run_name my_plan_alpha1 \\
@@ -59,7 +60,8 @@ torch.backends.cudnn.benchmark = True
 # node_specs 格式: "node_2=white_square,clean;node_3=a,b,clean"
 # 可用類別: clean, white_square, green_square, white_grid, color_grid,
 #           big_hello_kitty, small_hello_kitty
-# blended_alpha: 0=看不見 trigger；1=mask 區完全貼上 trigger（硬貼）
+# blended_alpha_*: 0=看不見 trigger；1=mask 區完全貼上 trigger（硬貼）
+# square/grid 與 hello_kitty 分開，避免同一透明度下視覺強度差太大。
 # =============================================================================
 DEFAULTS = {
     "node_specs": "node_1=white_square,big_hello_kitty,clean;node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean;node_4=white_grid,green_square,clean",
@@ -67,7 +69,8 @@ DEFAULTS = {
     "trigger_dir": "",                          # 空= dataset_root/Attack_trigger_image
     "generated_root": "",                       # 空= dataset_root/generated
     "extracted_layer": "7_point",
-    "blended_alpha": 0.7,
+    "blended_alpha_square": 0.7,
+    "blended_alpha_hello_kitty": 0.3,
     "seed": 0,
     "keep_generated": False,
     "feature_batch_size": 32,
@@ -392,7 +395,18 @@ def build_argparser():
     )
     parser.add_argument("--trigger_dir", type=str, default=d["trigger_dir"])
     parser.add_argument("--generated_root", type=str, default=d["generated_root"])
-    parser.add_argument("--blended_alpha", type=float, default=d["blended_alpha"])
+    parser.add_argument(
+        "--blended_alpha_square",
+        type=float,
+        default=d["blended_alpha_square"],
+        help="MaskBlended alpha for square/grid triggers (ABS_PATCH_CLASSES).",
+    )
+    parser.add_argument(
+        "--blended_alpha_hello_kitty",
+        type=float,
+        default=d["blended_alpha_hello_kitty"],
+        help="MaskBlended alpha for big/small_hello_kitty.",
+    )
     parser.add_argument("--seed", type=int, default=d["seed"])
     parser.add_argument(
         "--keep_generated",
@@ -463,7 +477,8 @@ if __name__ == "__main__":
             node_specs=node_specs,
             trigger_dir=trigger_dir,
             output_root=generated_root,
-            blended_alpha=opt.blended_alpha,
+            blended_alpha_square=opt.blended_alpha_square,
+            blended_alpha_hello_kitty=opt.blended_alpha_hello_kitty,
             extracted_layer=opt.extracted_layer,
             seed=opt.seed,
             device=DEVICE,
