@@ -1,0 +1,13 @@
+{
+  "SAMPLE_RATIO": 0.1,
+  "GRID_ROWS": 7,
+  "GRID_COLS": 7,
+  "NUM_MASKS_PER_IMAGE": 8,
+  "KEEP_PROB": 0.5,
+  "MASK_BASELINE": "imagenet_mean_normalized",
+  "MASK_BASELINE_CHANNEL_CONSTANTS": null,
+  "MASK_BEFORE_OR_AFTER_NORMALIZATION": "after",
+  "RANDOM_SEED": 42,
+  "IMAGE_SIZE": 224,
+  "WRITE_PREVIEWS": false
+}
