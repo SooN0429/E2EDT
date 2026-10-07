@@ -1,0 +1,43 @@
+{
+  "patch_run_dir": null,
+  "checkpoint_path": null,
+  "training_report_dir": null,
+  "output_root": null,
+  "output_dir": null,
+  "extracted_layer": "7_point",
+  "device": "cuda:0",
+  "seed": 42,
+  "target_class": null,
+  "include_reference": true,
+  "ridge_alpha": 0.0,
+  "ridge_fallback_alpha": 1.0e-6,
+  "g_batch_size": 32,
+  "masks": {
+    "enable": {
+      "M_L": true,
+      "M_P": true,
+      "M_B": true
+    },
+    "keep_ratio": {
+      "M_L": 0.25,
+      "M_P": 0.25,
+      "M_B": 0.25
+    },
+    "top_k": {
+      "M_L": null,
+      "M_P": null,
+      "M_B": null
+    },
+    "dims": {
+      "M_L": 320,
+      "M_P": 256,
+      "M_B": 128
+    },
+    "init": "zeros",
+    "budget_lambda": 1.0
+  },
+  "epochs": 50,
+  "lr": 0.1,
+  "batch_size": 16,
+  "log_every": 10
+}
