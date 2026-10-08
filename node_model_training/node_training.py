@@ -12,6 +12,7 @@
      --blended_alpha_square 1 \\
      --blended_alpha_hello_kitty 0.3 \\
      --extracted_layer 7_point \\
+     --model_arch resnet18_tail \\
      --batch_size 8 --lr 0.0001 --epoch 150 \\
      --run_name my_plan_alpha1 \\
      --gpu_id cuda:0
@@ -38,7 +39,7 @@ from sklearn.metrics import confusion_matrix
 from torchvision import datasets, transforms
 
 import node_training_report as treport
-from model_architecture import backbone_multi, models
+from model_architecture import backbone_multi, model_resnet18, models
 
 # Allow importing node_traindata_generate from sibling node_dataset/
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -69,6 +70,7 @@ DEFAULTS = {
     "trigger_dir": "",                          # 空= dataset_root/Attack_trigger_image
     "generated_root": "",                       # 空= dataset_root/generated
     "extracted_layer": "7_point",
+    "model_arch": "resnet18_multi",  # resnet18_multi | resnet18_tail
     "blended_alpha_square": 0.7,
     "blended_alpha_hello_kitty": 0.3,
     "seed": 0,
@@ -242,17 +244,31 @@ def train_one_node(
     )
     print(f"[INFO] val class_to_idx={val_class_to_idx}")
     print(f"[INFO] test class_to_idx={test_class_to_idx}")
+    print(f"[INFO] model_arch={opt.model_arch}")
 
-    model = models.Transfer_Net(n_class)
-    model = model.to(device)
-
-    optimizer = torch.optim.Adam(
-        [
+    if opt.model_arch == "resnet18_tail":
+        model = model_resnet18.Transfer_Net_ResNet18(n_class)
+        param_groups = [
+            {"params": model.base_network.parameters(), "lr": 100 * opt.lr},
+            {"params": model.classifier_layer.parameters(), "lr": 10 * opt.lr},
+        ]
+    elif opt.model_arch == "resnet18_multi":
+        model = models.Transfer_Net(n_class)
+        param_groups = [
             {"params": model.base_network.parameters(), "lr": 100 * opt.lr},
             {"params": model.base_network.avgpool.parameters(), "lr": 100 * opt.lr},
             {"params": model.bottle_layer.parameters(), "lr": 10 * opt.lr},
             {"params": model.classifier_layer.parameters(), "lr": 10 * opt.lr},
-        ],
+        ]
+    else:
+        raise ValueError(
+            f"Unsupported model_arch={opt.model_arch!r}; "
+            "expected resnet18_multi or resnet18_tail"
+        )
+
+    model = model.to(device)
+    optimizer = torch.optim.Adam(
+        param_groups,
         lr=opt.lr,
         betas=CFG["betas"],
         weight_decay=CFG["l2_decay"],
@@ -386,6 +402,13 @@ def build_argparser():
         "Defaults are defined in DEFAULTS at the top of this file."
     )
     parser.add_argument("--extracted_layer", type=str, default=d["extracted_layer"])
+    parser.add_argument(
+        "--model_arch",
+        type=str,
+        default=d["model_arch"],
+        choices=["resnet18_multi", "resnet18_tail"],
+        help="resnet18_multi: LiMAR+bottle; resnet18_tail: remaining ResNet residual+fc",
+    )
     parser.add_argument("--dataset_root", type=str, default=d["dataset_root"])
     parser.add_argument(
         "--node_specs",
