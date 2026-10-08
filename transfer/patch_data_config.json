@@ -1,4 +1,17 @@
 {
+  "_docs": {
+    "SAMPLE_RATIO": "從該 node×攻擊類之完整 train 毒化樣本中，再依比例隨機子採樣的比例，範圍 (0, 1]。",
+    "GRID_ROWS": "Image patch mask 的列數 R（與 GRID_COLS 組成 R×C 網格）。",
+    "GRID_COLS": "Image patch mask 的行數 C。",
+    "NUM_MASKS_PER_IMAGE": "每張圖產生的隨機 Bernoulli binary patch mask 數量（另會再加一個 reference_all_ones，不計入此數）。",
+    "KEEP_PROB": "Bernoulli 保留機率 p：每個 patch 格子以機率 p 設為 1（保留原圖）、以 1-p 設為 0（改為 baseline）。與 localization 的 keep_ratio（網路 channel 預算）不同。",
+    "MASK_BASELINE": "被遮罩格子填入的基準值類型。imagenet_mean_normalized：Normalize 後對應 ImageNet mean（張量空間常為 0）；channel_constants：使用 MASK_BASELINE_CHANNEL_CONSTANTS。",
+    "MASK_BASELINE_CHANNEL_CONSTANTS": "當 MASK_BASELINE=channel_constants 時，長度 3 的 RGB 常數；否則為 null。",
+    "MASK_BEFORE_OR_AFTER_NORMALIZATION": "遮罩套用時機。目前僅支援 after（在 ImageNet Normalize 之後）。",
+    "RANDOM_SEED": "子採樣與每張圖 mask RNG 的種子（與 image_id 組合成可重現 RNG）。",
+    "IMAGE_SIZE": "輸出張量邊長（Resize 後為 IMAGE_SIZE×IMAGE_SIZE）。",
+    "WRITE_PREVIEWS": "是否額外寫出 denormalize 後的 PNG 預覽圖。"
+  },
   "SAMPLE_RATIO": 0.2,
   "GRID_ROWS": 4,
   "GRID_COLS": 4,
