@@ -3,9 +3,9 @@
 
 Phase 1: fit per-image linear surrogates g_i (locality-weighted lstsq, no bias)
          that map flattened binary patch masks -> full Ms logits.
-Phase 2: freeze Ms, optimize network learnable masks M_L / M_P / M_B so that
-         f_t(Ms^M(x̃)) ≈ f_t(g_i(b)), with budget penalty only when activated
-         mass exceeds keep_ratio * n_channels; then exact top-k -> hard masks.
+Phase 2: freeze Ms (Transfer_Net_ResNet18), optimize BasicBlock soft masks
+         M_H / M_O after extracted_layer so f_t(Ms^M(x̃)) ≈ f_t(g_i(b));
+         then top-k hard masks, compact subnetwork slice, consistency check.
 """
 
 from __future__ import annotations
@@ -35,10 +35,18 @@ _DEFAULT_OUTPUT_ROOT = os.path.join(_SCRIPT_DIR, "localization_result")
 if _NODE_TRAINING_DIR not in sys.path:
     sys.path.insert(0, _NODE_TRAINING_DIR)
 
-from model_architecture import backbone_multi, models  # noqa: E402
+from model_architecture import backbone_multi, model_resnet18  # noqa: E402
 
 REFERENCE_MASK_ID = "reference_all_ones"
-MASK_LOCATIONS = ("M_L", "M_P", "M_B")
+MASK_TYPES = ("M_H", "M_O")
+
+# (layer_attr, block_index) after extracted_layer cut
+_LOCALIZATION_BLOCKS: Dict[str, List[Tuple[str, int]]] = {
+    "5_point": [("layer3", 0), ("layer3", 1), ("layer4", 0), ("layer4", 1)],
+    "6_point": [("layer3", 1), ("layer4", 0), ("layer4", 1)],
+    "7_point": [("layer4", 0), ("layer4", 1)],
+    "8_point": [("layer4", 1)],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -134,14 +142,63 @@ def resolve_checkpoint(
     return os.path.abspath(entry["path"]), list(entry["classes"])
 
 
+def localization_block_specs(extracted_layer: str) -> List[Tuple[str, int]]:
+    if extracted_layer not in _LOCALIZATION_BLOCKS:
+        raise ValueError(
+            f"Unsupported extracted_layer={extracted_layer!r}; "
+            f"expected one of {sorted(_LOCALIZATION_BLOCKS)}"
+        )
+    return list(_LOCALIZATION_BLOCKS[extracted_layer])
+
+
+def block_key(layer_attr: str, block_idx: int) -> str:
+    return f"{layer_attr}.{block_idx}"
+
+
+def mask_key(layer_attr: str, block_idx: int, mask_type: str) -> str:
+    return f"{block_key(layer_attr, block_idx)}.{mask_type}"
+
+
+def safe_block_key(layer_attr: str, block_idx: int) -> str:
+    """ModuleDict/ParameterDict-safe block id: layer4_0."""
+    return f"{layer_attr}_{block_idx}"
+
+
+def safe_block_key_from_logical(bkey: str) -> str:
+    """layer4.0 -> layer4_0."""
+    return bkey.replace(".", "_")
+
+
+def param_dict_key(logical_key: str) -> str:
+    """ParameterDict forbids '.'; map layer4.0.M_H -> layer4_0__M_H."""
+    if logical_key.endswith(".M_H"):
+        return logical_key[: -len(".M_H")].replace(".", "_") + "__M_H"
+    if logical_key.endswith(".M_O"):
+        return logical_key[: -len(".M_O")].replace(".", "_") + "__M_O"
+    raise ValueError(f"Unexpected mask key {logical_key!r}")
+
+
+def logical_mask_key(param_key: str) -> str:
+    if param_key.endswith("__M_H"):
+        return param_key[: -len("__M_H")].replace("_", ".", 1) + ".M_H"
+    if param_key.endswith("__M_O"):
+        return param_key[: -len("__M_O")].replace("_", ".", 1) + ".M_O"
+    raise ValueError(f"Unexpected param key {param_key!r}")
+
+
+def get_basic_block(base_network: nn.Module, layer_attr: str, block_idx: int) -> nn.Module:
+    layer = getattr(base_network, layer_attr)
+    return layer[block_idx]
+
+
 def load_source_model(
     num_class: int,
     checkpoint_path: str,
     extracted_layer: str,
     device: torch.device,
-) -> models.Transfer_Net:
+) -> model_resnet18.Transfer_Net_ResNet18:
     backbone_multi.extracted_layer = extracted_layer
-    model = models.Transfer_Net(num_class)
+    model = model_resnet18.Transfer_Net_ResNet18(num_class)
     state = torch.load(checkpoint_path, map_location="cpu")
     if isinstance(state, dict) and "state_dict" in state:
         state = state["state_dict"]
@@ -154,97 +211,185 @@ def load_source_model(
 
 
 # ---------------------------------------------------------------------------
-# Masked Transfer Net (network learnable masks)
+# Masked ResNet18 (BasicBlock M_H / M_O)
 # ---------------------------------------------------------------------------
 
 
-class MaskedTransferNet(nn.Module):
-    """Frozen Transfer_Net with optional channel gates M_L / M_P / M_B."""
+class MaskedBasicBlock(nn.Module):
+    """Wrap a frozen BasicBlock; apply soft or hard M_H / M_O around residual."""
 
     def __init__(
         self,
-        base: models.Transfer_Net,
+        block: nn.Module,
+        soft_h_fn: Optional[Any],
+        soft_o_fn: Optional[Any],
+        enable_h: bool,
+        enable_o: bool,
+    ):
+        super().__init__()
+        self.block = block
+        self.enable_h = bool(enable_h)
+        self.enable_o = bool(enable_o)
+        self._soft_h_fn = soft_h_fn
+        self._soft_o_fn = soft_o_fn
+        self._hard_h: Optional[torch.Tensor] = None
+        self._hard_o: Optional[torch.Tensor] = None
+        self.use_hard = False
+
+    def set_hard_masks(
+        self, hard_h: Optional[torch.Tensor], hard_o: Optional[torch.Tensor]
+    ) -> None:
+        self.use_hard = True
+        self._hard_h = None if hard_h is None else hard_h.detach().float()
+        self._hard_o = None if hard_o is None else hard_o.detach().float()
+
+    def _gate_h(self, ref: torch.Tensor) -> Optional[torch.Tensor]:
+        if not self.enable_h:
+            return None
+        if self.use_hard:
+            assert self._hard_h is not None
+            return self._hard_h.to(device=ref.device, dtype=ref.dtype)
+        assert self._soft_h_fn is not None
+        return self._soft_h_fn()
+
+    def _gate_o(self, ref: torch.Tensor) -> Optional[torch.Tensor]:
+        if not self.enable_o:
+            return None
+        if self.use_hard:
+            assert self._hard_o is not None
+            return self._hard_o.to(device=ref.device, dtype=ref.dtype)
+        assert self._soft_o_fn is not None
+        return self._soft_o_fn()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.block.conv1(x)
+        out = self.block.bn1(out)
+        out = self.block.relu(out)
+        g_h = self._gate_h(out)
+        if g_h is not None:
+            out = out * g_h.view(1, -1, 1, 1)
+
+        out = self.block.conv2(out)
+        out = self.block.bn2(out)
+        g_o = self._gate_o(out)
+        if g_o is not None:
+            out = out * g_o.view(1, -1, 1, 1)
+
+        if self.block.downsample is not None:
+            identity = self.block.downsample(x)
+        if g_o is not None:
+            identity = identity * g_o.view(1, -1, 1, 1)
+
+        out = out + identity
+        out = self.block.relu(out)
+        return out
+
+
+class MaskedResNet18Net(nn.Module):
+    """Frozen Transfer_Net_ResNet18 with learnable M_H/M_O on localization blocks."""
+
+    def __init__(
+        self,
+        base: model_resnet18.Transfer_Net_ResNet18,
+        extracted_layer: str,
         enable: Dict[str, bool],
-        dims: Dict[str, int],
         init: str = "zeros",
     ):
         super().__init__()
         self.base = base
-        self.enable = {k: bool(enable.get(k, False)) for k in MASK_LOCATIONS}
-        self.dims = {k: int(dims[k]) for k in MASK_LOCATIONS}
+        self.extracted_layer = extracted_layer
+        self.enable = {
+            "M_H": bool(enable.get("M_H", True)),
+            "M_O": bool(enable.get("M_O", True)),
+        }
+        self.block_specs = localization_block_specs(extracted_layer)
 
         for p in self.base.parameters():
             p.requires_grad = False
         self.base.eval()
 
         self.raw_masks = nn.ParameterDict()
-        for name in MASK_LOCATIONS:
-            if not self.enable[name]:
-                continue
-            n = self.dims[name]
-            if init == "zeros":
-                tensor = torch.zeros(n)
-            elif init == "ones":
-                tensor = torch.ones(n)
-            else:
-                raise ValueError(f"Unknown mask init {init!r}")
-            self.raw_masks[name] = nn.Parameter(tensor)
+        # Plain dict to avoid double-registering blocks already under self.base
+        self.masked_blocks: Dict[str, MaskedBasicBlock] = {}
+        self.block_meta: List[Dict[str, Any]] = []
 
-        self._hooks: List[Any] = []
-        self._register_hooks()
-
-    def _register_hooks(self) -> None:
-        self._clear_hooks()
         bn = self.base.base_network
-        if self.enable["M_L"]:
-            self._hooks.append(
-                bn.convm2_layer.register_forward_hook(
-                    self._make_channel_hook("M_L")
-                )
+        for layer_attr, block_idx in self.block_specs:
+            blk = get_basic_block(bn, layer_attr, block_idx)
+            # Unwrap if already wrapped
+            while isinstance(blk, MaskedBasicBlock):
+                blk = blk.block
+            bkey = block_key(layer_attr, block_idx)
+            n_h = int(blk.conv1.out_channels)
+            n_o = int(blk.conv2.out_channels)
+            has_downsample = blk.downsample is not None
+            in_channels = int(blk.conv1.in_channels)
+
+            kh = mask_key(layer_attr, block_idx, "M_H")
+            ko = mask_key(layer_attr, block_idx, "M_O")
+            soft_h_fn = None
+            soft_o_fn = None
+            if self.enable["M_H"]:
+                pk = param_dict_key(kh)
+                self.raw_masks[pk] = self._init_raw(n_h, init)
+                soft_h_fn = lambda k=pk: torch.sigmoid(self.raw_masks[k])
+            if self.enable["M_O"]:
+                pk = param_dict_key(ko)
+                self.raw_masks[pk] = self._init_raw(n_o, init)
+                soft_o_fn = lambda k=pk: torch.sigmoid(self.raw_masks[k])
+
+            wrapped = MaskedBasicBlock(
+                blk,
+                soft_h_fn,
+                soft_o_fn,
+                enable_h=self.enable["M_H"],
+                enable_o=self.enable["M_O"],
             )
-        if self.enable["M_P"]:
-            self._hooks.append(
-                bn.linear_test.register_forward_hook(
-                    self._make_channel_hook("M_P")
-                )
-            )
-        if self.enable["M_B"]:
-            self._hooks.append(
-                self.base.bottle_layer[1].register_forward_hook(
-                    self._make_channel_hook("M_B")
-                )
+            layer = getattr(bn, layer_attr)
+            layer[block_idx] = wrapped
+            self.masked_blocks[bkey] = wrapped
+            self.block_meta.append(
+                {
+                    "key": bkey,
+                    "layer_attr": layer_attr,
+                    "block_idx": block_idx,
+                    "n_h": n_h,
+                    "n_o": n_o,
+                    "has_downsample": has_downsample,
+                    "in_channels": in_channels,
+                }
             )
 
-    def _clear_hooks(self) -> None:
-        for h in self._hooks:
-            h.remove()
-        self._hooks = []
-
-    def _make_channel_hook(self, name: str):
-        def hook(_module, _inp, out):
-            gate = torch.sigmoid(self.raw_masks[name])
-            if out.dim() == 4:
-                return out * gate.view(1, -1, 1, 1)
-            if out.dim() == 2:
-                return out * gate.view(1, -1)
-            raise RuntimeError(
-                f"Unsupported activation rank {out.dim()} for mask {name}"
-            )
-
-        return hook
+    @staticmethod
+    def _init_raw(n: int, init: str) -> nn.Parameter:
+        if init == "zeros":
+            tensor = torch.zeros(n)
+        elif init == "ones":
+            tensor = torch.ones(n)
+        else:
+            raise ValueError(f"Unknown mask init {init!r}")
+        return nn.Parameter(tensor)
 
     def soft_masks(self) -> Dict[str, torch.Tensor]:
-        return {k: torch.sigmoid(v) for k, v in self.raw_masks.items()}
+        return {
+            logical_mask_key(k): torch.sigmoid(v) for k, v in self.raw_masks.items()
+        }
 
     def mask_masses(self) -> Dict[str, torch.Tensor]:
         return {k: m.sum() for k, m in self.soft_masks().items()}
+
+    def apply_hard_masks(self, hard: Dict[str, torch.Tensor]) -> None:
+        for meta in self.block_meta:
+            bkey = meta["key"]
+            wrapped: MaskedBasicBlock = self.masked_blocks[bkey]
+            wrapped.set_hard_masks(hard.get(f"{bkey}.M_H"), hard.get(f"{bkey}.M_O"))
 
     def predict(self, x: torch.Tensor, test_flag: int = 1) -> torch.Tensor:
         self.base.eval()
         return self.base.predict(x, test_flag=test_flag)
 
     def train(self, mode: bool = True):  # type: ignore[override]
-        # Keep base frozen in eval; ParameterDict still receives grads.
         super().train(mode)
         self.base.eval()
         return self
@@ -377,7 +522,7 @@ def fit_linear_surrogate(
 
 @torch.no_grad()
 def collect_ms_logits(
-    model: models.Transfer_Net,
+    model: nn.Module,
     tensor_paths: Sequence[str],
     device: torch.device,
     batch_size: int = 32,
@@ -405,7 +550,7 @@ def collect_ms_logits(
 
 def fit_all_surrogates(
     groups: Dict[str, List[Dict[str, Any]]],
-    model: models.Transfer_Net,
+    model: nn.Module,
     keep_prob: float,
     grid_rows: int,
     grid_cols: int,
@@ -577,28 +722,91 @@ def resolve_top_k(n: int, keep_ratio: float, top_k: Optional[int]) -> int:
     return max(1, min(k, n))
 
 
+def mask_type_of(name: str) -> str:
+    typ = name.rsplit(".", 1)[-1]
+    if typ not in MASK_TYPES:
+        raise ValueError(f"Not a typed mask key: {name!r}")
+    return typ
+
+
+def keep_ratio_map_for_keys(
+    keys: Sequence[str], masks_cfg: Dict[str, Any]
+) -> Dict[str, float]:
+    kr = masks_cfg["keep_ratio"]
+    return {k: float(kr[mask_type_of(k)]) for k in keys}
+
+
+def top_k_map_for_keys(
+    keys: Sequence[str], masks_cfg: Dict[str, Any]
+) -> Dict[str, Optional[int]]:
+    tk = masks_cfg.get("top_k") or {}
+    out: Dict[str, Optional[int]] = {}
+    for k in keys:
+        typ = mask_type_of(k)
+        v = tk.get(typ, tk.get(k))
+        out[k] = None if v is None else int(v)
+    return out
+
+
 def soft_to_hard_masks(
     soft: Dict[str, torch.Tensor],
     keep_ratio: Dict[str, float],
     top_k_cfg: Dict[str, Optional[int]],
+    block_meta: Sequence[Dict[str, Any]],
 ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
+    """Exact top-k hard masks; identity blocks enforce S_O ⊆ previous S_O."""
     hard: Dict[str, torch.Tensor] = {}
     selected: Dict[str, List[int]] = {}
     meta_k: Dict[str, int] = {}
-    for name, m in soft.items():
-        n = m.numel()
-        k = resolve_top_k(n, keep_ratio[name], top_k_cfg.get(name))
-        _, idx = torch.topk(m.detach().cpu(), k)
-        h = torch.zeros(n, dtype=torch.float32)
-        h[idx] = 1.0
-        hard[name] = h
-        selected[name] = sorted(int(i) for i in idx.tolist())
-        meta_k[name] = k
+    prev_s_o: Optional[List[int]] = None
+
+    for meta in block_meta:
+        bkey = meta["key"]
+        kh = f"{bkey}.M_H"
+        ko = f"{bkey}.M_O"
+        n_o = int(meta["n_o"])
+
+        if kh in soft:
+            m = soft[kh]
+            n = m.numel()
+            k = resolve_top_k(n, keep_ratio[kh], top_k_cfg.get(kh))
+            _, idx = torch.topk(m.detach().cpu(), k)
+            h = torch.zeros(n, dtype=torch.float32)
+            h[idx] = 1.0
+            hard[kh] = h
+            selected[kh] = sorted(int(i) for i in idx.tolist())
+            meta_k[kh] = k
+
+        if ko in soft:
+            m = soft[ko]
+            n = m.numel()
+            k = resolve_top_k(n, keep_ratio[ko], top_k_cfg.get(ko))
+            scores = m.detach().cpu()
+            if (not meta["has_downsample"]) and prev_s_o is not None:
+                allowed = set(prev_s_o)
+                k_eff = min(k, len(allowed))
+                masked_scores = torch.full_like(scores, float("-inf"))
+                for i in allowed:
+                    masked_scores[i] = scores[i]
+                _, idx = torch.topk(masked_scores, k_eff)
+                k = k_eff
+            else:
+                _, idx = torch.topk(scores, k)
+            h = torch.zeros(n, dtype=torch.float32)
+            h[idx] = 1.0
+            hard[ko] = h
+            selected[ko] = sorted(int(i) for i in idx.tolist())
+            meta_k[ko] = k
+            prev_s_o = selected[ko]
+        else:
+            # M_O disabled: keep all output channels for chaining
+            prev_s_o = list(range(n_o))
+
     return hard, {"indices": selected, "top_k": meta_k}
 
 
 def train_localization(
-    masked_model: MaskedTransferNet,
+    masked_model: MaskedResNet18Net,
     dataset: LocalizationDataset,
     cfg: Dict[str, Any],
     device: torch.device,
@@ -616,10 +824,9 @@ def train_localization(
     if not params:
         raise RuntimeError("No network masks enabled")
     optimizer = torch.optim.Adam(params, lr=float(cfg["lr"]))
-    keep_ratio = {
-        k: float(cfg["masks"]["keep_ratio"][k])
-        for k in masked_model.raw_masks.keys()
-    }
+    keep_ratio = keep_ratio_map_for_keys(
+        list(masked_model.raw_masks.keys()), cfg["masks"]
+    )
     budget_lambda = float(cfg["masks"]["budget_lambda"])
     epochs = int(cfg["epochs"])
     log_every = max(1, int(cfg.get("log_every", 10)))
@@ -681,6 +888,312 @@ def train_localization(
     _write_csv(hist_path, history)
     print(f"[INFO] wrote {hist_path}")
     return history
+
+
+# ---------------------------------------------------------------------------
+# Compact subnetwork slicing + consistency
+# ---------------------------------------------------------------------------
+
+
+def _indices_from_hard(
+    hard: Dict[str, torch.Tensor], key: str, n: int, enabled: bool
+) -> List[int]:
+    if not enabled or key not in hard:
+        return list(range(n))
+    h = hard[key]
+    return sorted(int(i) for i in torch.nonzero(h > 0.5, as_tuple=False).view(-1).tolist())
+
+
+def slice_bn(bn_src: nn.BatchNorm2d, indices: Sequence[int]) -> nn.BatchNorm2d:
+    idx = torch.as_tensor(list(indices), dtype=torch.long)
+    bn = nn.BatchNorm2d(len(indices), eps=bn_src.eps, momentum=bn_src.momentum)
+    with torch.no_grad():
+        if bn_src.affine:
+            bn.weight.copy_(bn_src.weight.data[idx])
+            bn.bias.copy_(bn_src.bias.data[idx])
+        bn.running_mean.copy_(bn_src.running_mean.data[idx])
+        bn.running_var.copy_(bn_src.running_var.data[idx])
+        bn.num_batches_tracked.copy_(bn_src.num_batches_tracked)
+    return bn
+
+
+def slice_conv2d(
+    conv_src: nn.Conv2d,
+    out_idx: Optional[Sequence[int]],
+    in_idx: Optional[Sequence[int]],
+) -> nn.Conv2d:
+    w = conv_src.weight.data
+    if out_idx is not None:
+        w = w[torch.as_tensor(list(out_idx), dtype=torch.long)]
+    if in_idx is not None:
+        w = w[:, torch.as_tensor(list(in_idx), dtype=torch.long)]
+    out_c, in_c = w.shape[0], w.shape[1]
+    conv = nn.Conv2d(
+        in_c,
+        out_c,
+        kernel_size=conv_src.kernel_size,
+        stride=conv_src.stride,
+        padding=conv_src.padding,
+        dilation=conv_src.dilation,
+        groups=1,
+        bias=conv_src.bias is not None,
+    )
+    with torch.no_grad():
+        conv.weight.copy_(w)
+        if conv_src.bias is not None:
+            b = conv_src.bias.data
+            if out_idx is not None:
+                b = b[torch.as_tensor(list(out_idx), dtype=torch.long)]
+            conv.bias.copy_(b)
+    return conv
+
+
+class CompactBasicBlock(nn.Module):
+    """Sliced BasicBlock; optional channel gather for identity when |S_O| < |in|."""
+
+    def __init__(
+        self,
+        conv1: nn.Conv2d,
+        bn1: nn.BatchNorm2d,
+        conv2: nn.Conv2d,
+        bn2: nn.BatchNorm2d,
+        downsample: Optional[nn.Module] = None,
+        identity_gather_idx: Optional[List[int]] = None,
+    ):
+        super().__init__()
+        self.conv1 = conv1
+        self.bn1 = bn1
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv2
+        self.bn2 = bn2
+        self.downsample = downsample
+        self.identity_gather_idx = identity_gather_idx
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        elif self.identity_gather_idx is not None:
+            gather = torch.as_tensor(
+                self.identity_gather_idx, device=x.device, dtype=torch.long
+            )
+            identity = x.index_select(1, gather)
+        out = self.relu(out + identity)
+        return out
+
+
+class CompactTransferNet(nn.Module):
+    """Prefix shared from source + sliced localization blocks + sliced FC."""
+
+    def __init__(
+        self,
+        source: model_resnet18.Transfer_Net_ResNet18,
+        extracted_layer: str,
+        compact_blocks: Dict[str, CompactBasicBlock],
+        classifier: nn.Linear,
+    ):
+        super().__init__()
+        self.extracted_layer = extracted_layer
+        self.compact_blocks = nn.ModuleDict(compact_blocks)
+        self.classifier_layer = classifier
+        # Keep a frozen copy of stem/prefix modules by reference from a shallow structure
+        src_bn = source.base_network
+        self.conv1 = src_bn.conv1
+        self.bn1 = src_bn.bn1
+        self.relu = src_bn.relu
+        self.maxpool = src_bn.maxpool
+        self.layer1 = src_bn.layer1
+        self.layer2 = src_bn.layer2
+        self.layer3 = src_bn.layer3
+        self.layer4 = src_bn.layer4
+        self.avgpool = src_bn.avgpool
+        self._block_specs = localization_block_specs(extracted_layer)
+
+    def _run_block(self, layer_attr: str, block_idx: int, x: torch.Tensor) -> torch.Tensor:
+        skey = safe_block_key(layer_attr, block_idx)
+        if skey in self.compact_blocks:
+            return self.compact_blocks[skey](x)
+        layer = getattr(self, layer_attr)
+        blk = layer[block_idx]
+        if isinstance(blk, MaskedBasicBlock):
+            return blk.block(x)
+        return blk(x)
+
+    def forward_features(self, x: torch.Tensor, test_flag: int = 1) -> torch.Tensor:
+        extracted = self.extracted_layer
+        if test_flag:
+            x = self.conv1(x)
+            x = self.bn1(x)
+            x = self.relu(x)
+            x = self.maxpool(x)
+            x = self.layer1(x)
+            x = self.layer2(x)
+            if extracted == "6_point":
+                x = self._run_block("layer3", 0, x)
+            elif extracted == "7_point":
+                x = self.layer3(x)
+            elif extracted == "8_point":
+                x = self.layer3(x)
+                x = self._run_block("layer4", 0, x)
+
+        if extracted == "5_point":
+            x = self._run_block("layer3", 0, x)
+            x = self._run_block("layer3", 1, x)
+            x = self._run_block("layer4", 0, x)
+            x = self._run_block("layer4", 1, x)
+        elif extracted == "6_point":
+            x = self._run_block("layer3", 1, x)
+            x = self._run_block("layer4", 0, x)
+            x = self._run_block("layer4", 1, x)
+        elif extracted == "7_point":
+            x = self._run_block("layer4", 0, x)
+            x = self._run_block("layer4", 1, x)
+        elif extracted == "8_point":
+            x = self._run_block("layer4", 1, x)
+        else:
+            raise ValueError(f"Unsupported extracted_layer={extracted!r}")
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        return x
+
+    def predict(self, x: torch.Tensor, test_flag: int = 1) -> torch.Tensor:
+        return self.classifier_layer(self.forward_features(x, test_flag=test_flag))
+
+
+def _unwrap_block(blk: nn.Module) -> nn.Module:
+    while isinstance(blk, MaskedBasicBlock):
+        blk = blk.block
+    return blk
+
+
+def build_compact_subnetwork(
+    masked_model: MaskedResNet18Net,
+    hard: Dict[str, torch.Tensor],
+) -> Tuple[CompactTransferNet, Dict[str, Any]]:
+    """Physically slice localization blocks (+ FC) according to S_H / S_O."""
+    enable = masked_model.enable
+    source = masked_model.base
+    bn = source.base_network
+    compact_blocks: Dict[str, CompactBasicBlock] = {}
+    meta_out: Dict[str, Any] = {"blocks": {}, "classifier_in": None}
+    in_idx: Optional[List[int]] = None  # None => full original input channels
+
+    for meta in masked_model.block_meta:
+        layer_attr = meta["layer_attr"]
+        block_idx = meta["block_idx"]
+        bkey = meta["key"]
+        src = _unwrap_block(get_basic_block(bn, layer_attr, block_idx))
+        n_h, n_o = int(meta["n_h"]), int(meta["n_o"])
+        in_channels = int(meta["in_channels"])
+
+        s_h = _indices_from_hard(hard, f"{bkey}.M_H", n_h, enable["M_H"])
+        s_o = _indices_from_hard(hard, f"{bkey}.M_O", n_o, enable["M_O"])
+
+        if in_idx is None:
+            in_idx_list = list(range(in_channels))
+        else:
+            in_idx_list = list(in_idx)
+
+        conv1 = slice_conv2d(src.conv1, out_idx=s_h, in_idx=in_idx_list)
+        bn1 = slice_bn(src.bn1, s_h)
+        conv2 = slice_conv2d(src.conv2, out_idx=s_o, in_idx=s_h)
+        bn2 = slice_bn(src.bn2, s_o)
+
+        downsample = None
+        identity_gather: Optional[List[int]] = None
+        if src.downsample is not None:
+            ds_conv = slice_conv2d(src.downsample[0], out_idx=s_o, in_idx=in_idx_list)
+            ds_bn = slice_bn(src.downsample[1], s_o)
+            downsample = nn.Sequential(ds_conv, ds_bn)
+        else:
+            # Map S_O (original ids) -> positions within current compact input (in_idx_list)
+            pos = {orig: i for i, orig in enumerate(in_idx_list)}
+            try:
+                identity_gather = [pos[i] for i in s_o]
+            except KeyError as e:
+                raise RuntimeError(
+                    f"{bkey}: S_O index {e} not in previous S_O / input set "
+                    f"(identity ⊆ prev violated)"
+                ) from e
+            # If gather is identity permutation of full input and same width, skip
+            if identity_gather == list(range(len(in_idx_list))) and len(s_o) == len(
+                in_idx_list
+            ):
+                identity_gather = None
+
+        skey = safe_block_key_from_logical(bkey)
+        compact_blocks[skey] = CompactBasicBlock(
+            conv1, bn1, conv2, bn2, downsample, identity_gather
+        )
+        meta_out["blocks"][bkey] = {
+            "S_H": s_h,
+            "S_O": s_o,
+            "in_idx": in_idx_list,
+            "has_downsample": src.downsample is not None,
+            "module_key": skey,
+        }
+        in_idx = list(s_o)
+
+    assert in_idx is not None
+    # Slice classifier: weight [num_class, 512]
+    fc_src = source.classifier_layer
+    idx = torch.as_tensor(in_idx, dtype=torch.long)
+    fc = nn.Linear(len(in_idx), fc_src.out_features, bias=fc_src.bias is not None)
+    with torch.no_grad():
+        fc.weight.copy_(fc_src.weight.data[:, idx])
+        if fc_src.bias is not None:
+            fc.bias.copy_(fc_src.bias.data)
+    meta_out["classifier_in"] = in_idx
+
+    compact = CompactTransferNet(
+        source=source,
+        extracted_layer=masked_model.extracted_layer,
+        compact_blocks=compact_blocks,
+        classifier=fc,
+    )
+    compact.eval()
+    for p in compact.parameters():
+        p.requires_grad = False
+    return compact, meta_out
+
+
+def verify_hard_vs_compact(
+    masked_model: MaskedResNet18Net,
+    compact: CompactTransferNet,
+    sample_x: torch.Tensor,
+    atol: float = 1e-4,
+    rtol: float = 1e-4,
+) -> Dict[str, Any]:
+    device = sample_x.device
+    masked_model.eval()
+    compact.eval()
+    compact.to(device)
+    with torch.no_grad():
+        y_full = masked_model.predict(sample_x, test_flag=1)
+        y_compact = compact.predict(sample_x, test_flag=1)
+        diff = (y_full - y_compact).abs()
+        max_abs = float(diff.max().item())
+        denom = y_full.abs().max().clamp(min=1e-8)
+        max_rel = float((diff / denom).max().item())
+    ok = (max_abs <= atol) or (max_rel <= rtol)
+    report = {
+        "ok": ok,
+        "max_abs_diff": max_abs,
+        "max_rel_diff": max_rel,
+        "atol": atol,
+        "rtol": rtol,
+        "batch_size": int(sample_x.size(0)),
+        "logits_shape": list(y_full.shape),
+    }
+    if not ok:
+        raise RuntimeError(
+            "Consistency check failed: hard-masked full vs compact "
+            f"max_abs={max_abs:.6g} max_rel={max_rel:.6g}"
+        )
+    return report
 
 
 # ---------------------------------------------------------------------------
@@ -892,10 +1405,14 @@ def run_localization(cfg: Dict[str, Any]) -> str:
     )
 
     masks_cfg = cfg["masks"]
-    masked = MaskedTransferNet(
+    enable = {
+        "M_H": bool(masks_cfg.get("enable", {}).get("M_H", True)),
+        "M_O": bool(masks_cfg.get("enable", {}).get("M_O", True)),
+    }
+    masked = MaskedResNet18Net(
         base=model,
-        enable=masks_cfg["enable"],
-        dims=masks_cfg["dims"],
+        extracted_layer=extracted,
+        enable=enable,
         init=str(masks_cfg.get("init", "zeros")),
     )
     masked.to(device)
@@ -910,21 +1427,24 @@ def run_localization(cfg: Dict[str, Any]) -> str:
     )
 
     soft = {k: v.detach().cpu() for k, v in masked.soft_masks().items()}
-    raw = {k: v.detach().cpu() for k, v in masked.raw_masks.items()}
+    raw = {
+        logical_mask_key(k): v.detach().cpu() for k, v in masked.raw_masks.items()
+    }
     torch.save({"soft": soft, "raw": raw}, os.path.join(out_dir, "soft_masks.pt"))
 
     hard, sel = soft_to_hard_masks(
         soft,
-        keep_ratio={k: float(masks_cfg["keep_ratio"][k]) for k in soft},
-        top_k_cfg={
-            k: masks_cfg.get("top_k", {}).get(k) for k in soft
-        },
+        keep_ratio=keep_ratio_map_for_keys(list(soft.keys()), masks_cfg),
+        top_k_cfg=top_k_map_for_keys(list(soft.keys()), masks_cfg),
+        block_meta=masked.block_meta,
     )
     torch.save(hard, os.path.join(out_dir, "hard_masks.pt"))
     selected_payload = {
         "target_class_idx": target_idx,
         "target_class": class_names[target_idx],
-        "keep_ratio": {k: float(masks_cfg["keep_ratio"][k]) for k in soft},
+        "extracted_layer": extracted,
+        "block_meta": masked.block_meta,
+        "keep_ratio": {t: float(masks_cfg["keep_ratio"][t]) for t in MASK_TYPES},
         "top_k": sel["top_k"],
         "indices": sel["indices"],
     }
@@ -932,6 +1452,51 @@ def run_localization(cfg: Dict[str, Any]) -> str:
         os.path.join(out_dir, "selected_indices.json"), "w", encoding="utf-8"
     ) as f:
         json.dump(selected_payload, f, indent=2)
+
+    masked.apply_hard_masks(
+        {k: v.to(device) for k, v in hard.items()}
+    )
+    compact, compact_meta = build_compact_subnetwork(masked, hard)
+    compact.to(device)
+    torch.save(
+        {
+            "extracted_layer": extracted,
+            "meta": compact_meta,
+            "compact_blocks": compact.compact_blocks.state_dict(),
+            "classifier_layer": compact.classifier_layer.state_dict(),
+            # Prefix (stem..pre-cut) from frozen source for reload/rebuild
+            "source_base_network": {
+                k: v.cpu()
+                for k, v in masked.base.base_network.state_dict().items()
+            },
+            "source_classifier_full": {
+                k: v.cpu()
+                for k, v in masked.base.classifier_layer.state_dict().items()
+            },
+        },
+        os.path.join(out_dir, "compact_state_dict.pt"),
+    )
+    with open(
+        os.path.join(out_dir, "compact_meta.json"), "w", encoding="utf-8"
+    ) as f:
+        json.dump(compact_meta, f, indent=2)
+
+    # Consistency batch from localization dataset
+    n_cons = min(8, len(dataset))
+    xs = []
+    for i in range(n_cons):
+        x_i, *_rest = dataset[i]
+        xs.append(x_i)
+    sample_x = torch.stack(xs, dim=0).to(device)
+    cons = verify_hard_vs_compact(masked, compact, sample_x)
+    with open(
+        os.path.join(out_dir, "consistency_report.json"), "w", encoding="utf-8"
+    ) as f:
+        json.dump(cons, f, indent=2)
+    print(
+        f"[INFO] consistency ok max_abs={cons['max_abs_diff']:.6g} "
+        f"max_rel={cons['max_rel_diff']:.6g}"
+    )
 
     print(f"[INFO] localization done -> {out_dir}")
     for name, idx_list in sel["indices"].items():
@@ -962,14 +1527,14 @@ def build_argparser() -> argparse.ArgumentParser:
         "--keep_ratio",
         type=float,
         default=None,
-        help="Uniform keep_ratio for all enabled masks (overrides per-mask)",
+        help="Uniform keep_ratio for M_H and M_O (overrides per-type)",
     )
     p.add_argument(
         "--disable_mask",
         type=str,
         nargs="*",
         default=None,
-        help="Mask names to disable, e.g. M_B",
+        help="Mask types to disable: M_H and/or M_O",
     )
     return p
 
@@ -999,14 +1564,14 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     if args.keep_ratio is not None:
         cfg.setdefault("masks", {})
         cfg["masks"].setdefault("keep_ratio", {})
-        for name in MASK_LOCATIONS:
+        for name in MASK_TYPES:
             cfg["masks"]["keep_ratio"][name] = float(args.keep_ratio)
     if args.disable_mask:
         cfg.setdefault("masks", {})
         cfg["masks"].setdefault("enable", {})
         for name in args.disable_mask:
-            if name not in MASK_LOCATIONS:
-                raise ValueError(f"Unknown mask {name!r}")
+            if name not in MASK_TYPES:
+                raise ValueError(f"Unknown mask type {name!r}; expected M_H or M_O")
             cfg["masks"]["enable"][name] = False
 
     run_localization(cfg)
