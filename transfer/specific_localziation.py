@@ -824,8 +824,10 @@ def train_localization(
     if not params:
         raise RuntimeError("No network masks enabled")
     optimizer = torch.optim.Adam(params, lr=float(cfg["lr"]))
+    # soft_masks() / budget_penalty use logical keys (layer4.0.M_H);
+    # ParameterDict keys are layer4_0__M_H and must not be passed here.
     keep_ratio = keep_ratio_map_for_keys(
-        list(masked_model.raw_masks.keys()), cfg["masks"]
+        list(masked_model.soft_masks().keys()), cfg["masks"]
     )
     budget_lambda = float(cfg["masks"]["budget_lambda"])
     epochs = int(cfg["epochs"])
