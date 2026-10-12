@@ -11,9 +11,10 @@ Examples:
   #   --matching_root matching_result # 輸出根目錄，預設 matching_result
 
 Coverage(candidate -> target) = max cosine similarity against the target node's
-attack set D_i (matches the experiment report). Candidates with Coverage <
-tau_same are treated as novel; the novel candidate with minimal Coverage is the
-primary transfer attack / node.
+attack set D_i (matches the experiment report). The argmax target attack is
+recorded as closest_target_attack. Candidates with Coverage < tau_same are
+treated as novel; the novel candidate with minimal Coverage is the primary
+transfer attack / node.
 """
 
 from __future__ import annotations
@@ -165,19 +166,25 @@ def coverage_against_target(
     target_labels: Sequence[str],
     matrix: np.ndarray,
     labels: Sequence[str],
-) -> Tuple[float, Dict[str, float]]:
-    """Coverage = max cosine(candidate, t) for t in target_labels."""
+) -> Tuple[float, str, Dict[str, float]]:
+    """Coverage = max cosine(candidate, t) for t in target_labels.
+
+    Returns (coverage, closest_target_attack, per_target_cosines).
+    closest_target_attack is the argmax t achieving Coverage.
+    """
     label_to_idx = {lab: i for i, lab in enumerate(labels)}
     ci = label_to_idx[candidate_label]
     per_target: Dict[str, float] = {}
     best = -np.inf
+    closest = ""
     for tlab in target_labels:
         ti = label_to_idx[tlab]
         sim = float(matrix[ci, ti])
         per_target[tlab] = sim
         if sim > best:
             best = sim
-    return float(best), per_target
+            closest = tlab
+    return float(best), closest, per_target
 
 
 def select_primary_transfer(
@@ -201,7 +208,7 @@ def select_primary_transfer(
 
     ranking: List[Dict[str, Any]] = []
     for clab in candidates:
-        cov, per_target = coverage_against_target(
+        cov, closest, per_target = coverage_against_target(
             clab, target_attacks, matrix, labels
         )
         ranking.append(
@@ -209,6 +216,7 @@ def select_primary_transfer(
                 "label": clab,
                 "node": _node_from_label(clab),
                 "coverage": cov,
+                "closest_target_attack": closest,
                 "is_novel": bool(cov < tau_same),
                 "cosine_to_target_attacks": per_target,
             }
@@ -221,10 +229,12 @@ def select_primary_transfer(
         primary_node = best["node"]
         primary_attack = best["label"]
         novelty_score = best["coverage"]
+        closest_target = best["closest_target_attack"]
     else:
         primary_node = None
         primary_attack = None
         novelty_score = None
+        closest_target = None
 
     return {
         "target_node": target_node,
@@ -232,6 +242,7 @@ def select_primary_transfer(
         "tau_same": float(tau_same),
         "primary_transfer_node": primary_node,
         "primary_transfer_attack": primary_attack,
+        "closest_target_attack": closest_target,
         "novelty_score": novelty_score,
         "coverage": novelty_score,
         "candidate_ranking": ranking,
@@ -331,11 +342,14 @@ def _write_pairing_summary(path: str, result: Dict[str, Any], run_name: str) -> 
         "",
     ]
     if result.get("primary_transfer_node"):
+        closest = result.get("closest_target_attack")
+        closest_note = f" vs `{closest}`" if closest else ""
         lines.extend(
             [
                 f"- primary_transfer_node: **`{result['primary_transfer_node']}`**",
                 f"- primary_transfer_attack: **`{result['primary_transfer_attack']}`**",
-                f"- coverage (novelty_score): `{result['novelty_score']:.6f}` "
+                f"- coverage (novelty_score): `{result['novelty_score']:.6f}`"
+                f"{closest_note} "
                 f"(lower = more novel; threshold `{result['tau_same']}`)",
                 "",
             ]
@@ -354,15 +368,16 @@ def _write_pairing_summary(path: str, result: Dict[str, Any], run_name: str) -> 
         [
             "## Candidate ranking (by Coverage ascending)",
             "",
-            "| attack | node | Coverage | novel? |",
-            "|---|---|---:|:---:|",
+            "| attack | node | Coverage | closest_target_attack | novel? |",
+            "|---|---|---:|---|:---:|",
         ]
     )
     for row in result["candidate_ranking"]:
         novel = "yes" if row["is_novel"] else "no"
+        closest = row.get("closest_target_attack") or ""
         lines.append(
             f"| `{row['label']}` | `{row['node']}` | "
-            f"{row['coverage']:.6f} | {novel} |"
+            f"{row['coverage']:.6f} | `{closest}` | {novel} |"
         )
     lines.append("")
     with open(path, "w", encoding="utf-8") as f:
@@ -439,10 +454,12 @@ def run_matching(
     )
 
     if pairing["primary_transfer_node"]:
+        closest = pairing.get("closest_target_attack")
+        closest_note = f" vs {closest}" if closest else ""
         print(
             f"[INFO] primary transfer: node={pairing['primary_transfer_node']} "
             f"attack={pairing['primary_transfer_attack']} "
-            f"coverage={pairing['novelty_score']:.6f}"
+            f"coverage={pairing['novelty_score']:.6f}{closest_note}"
         )
     else:
         print("[INFO] no novel candidate under current tau_same")
