@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """End-to-end transfer orchestration: patch → localization → distill.
 
-Interactive (or CLI) selection of a training_report scheme, target/source
-nodes, and source attack class; then runs the three transfer scripts in-process,
-names the distill result as
-  {MMDD}_{day_seq}_{target}_{source}_{attack}_{full_run_name}/
-keeps 10 preview PNGs (1 reference_all_ones + 9 masks from one image_id),
-and cleans up this run's patch_generated heavy artifacts.
+以互動式（或 CLI）選擇一次 training_report 方案、目標／來源節點，
+以及來源攻擊類別；接著在同一行程內依序執行三支轉移腳本，
+並將蒸餾結果目錄命名為
+  {MMDD}_{當日序號}_{目標節點}_{來源節點}_{攻擊類}_{完整run名稱}/
+保留 10 張 preview PNG（同一 image_id 的 1 張 reference_all_ones + 9 張遮罩圖），
+並清理本次 run 在 patch_generated 下的大型產物。
 執行範例：
-python E2EDT.py --target_node node_2 --source_node node_1 --attack_class big_hello_kitty
+python E2EDT.py --target_node node_2 --source_node node_4 --attack_class white_grid
 """
 
 from __future__ import annotations
