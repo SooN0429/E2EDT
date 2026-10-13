@@ -7,6 +7,8 @@ names the distill result as
   {MMDD}_{day_seq}_{target}_{source}_{attack}_{full_run_name}/
 keeps 10 preview PNGs (1 reference_all_ones + 9 masks from one image_id),
 and cleans up this run's patch_generated heavy artifacts.
+執行範例：
+python E2EDT.py --target_node node_2 --source_node node_1 --attack_class big_hello_kitty
 """
 
 from __future__ import annotations

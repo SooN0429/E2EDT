@@ -10,11 +10,9 @@ Examples:
   #   --run_dir <diffvector_results 某 run> # 未指定，則預設使用最新訓練方案
   #   --matching_root matching_result # 輸出根目錄，預設 matching_result
 
-Coverage(candidate -> target) = max cosine similarity against the target node's
-attack set D_i (matches the experiment report). The argmax target attack is
-recorded as closest_target_attack. Candidates with Coverage < tau_same are
-treated as novel; the novel candidate with minimal Coverage is the primary
-transfer attack / node.
+Coverage(候選 → 目標) = 候選攻擊與目標節點攻擊集合 D_i 的最大 cosine 相似度
+（與實驗報告一致）。取到該最大值的目標攻擊類會記為 closest_target_attack。
+Coverage < tau_same 的候選視為新穎；其中 Coverage 最小者為主要轉移攻擊／節點。
 """
 
 from __future__ import annotations

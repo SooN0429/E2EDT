@@ -16,7 +16,7 @@
   "GRID_ROWS": 4,
   "GRID_COLS": 4,
   "NUM_MASKS_PER_IMAGE": 100,
-  "KEEP_PROB": 0.5,
+  "KEEP_PROB": 0.7,
   "MASK_BASELINE": "imagenet_mean_normalized",
   "MASK_BASELINE_CHANNEL_CONSTANTS": null,
   "MASK_BEFORE_OR_AFTER_NORMALIZATION": "after",

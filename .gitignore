@@ -19,6 +19,7 @@ training_report/
 **/diffvector_results/
 **/matching_result/
 **/localization_result/
+**/distill_result/
 **/patch_generated/
 **/features/
 *.npy
