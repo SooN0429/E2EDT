@@ -1,0 +1,2503 @@
+{
+  "completed": {
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_1_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 2,
+      "time": "2026-10-14T18:17:21",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_2_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 3,
+      "time": "2026-10-14T18:20:32",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_3_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 4,
+      "time": "2026-10-14T18:22:08",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_4_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 5,
+      "time": "2026-10-14T18:35:52",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_5_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 6,
+      "time": "2026-10-14T18:39:01",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_6_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 7,
+      "time": "2026-10-14T18:40:37",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_7_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 8,
+      "time": "2026-10-14T18:54:20",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_8_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 9,
+      "time": "2026-10-14T18:57:28",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_9_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 10,
+      "time": "2026-10-14T18:59:03",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_10_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 11,
+      "time": "2026-10-14T19:13:11",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_11_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 12,
+      "time": "2026-10-14T19:16:21",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_12_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 13,
+      "time": "2026-10-14T19:17:58",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_13_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 14,
+      "time": "2026-10-14T19:28:09",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_14_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 15,
+      "time": "2026-10-14T19:30:33",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_15_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 16,
+      "time": "2026-10-14T19:31:45",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_16_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 17,
+      "time": "2026-10-14T19:42:07",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_17_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 18,
+      "time": "2026-10-14T19:44:31",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_18_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 19,
+      "time": "2026-10-14T19:45:44",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_19_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 20,
+      "time": "2026-10-14T19:56:17",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_20_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 21,
+      "time": "2026-10-14T19:58:41",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_21_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 22,
+      "time": "2026-10-14T19:59:55",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_22_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 23,
+      "time": "2026-10-14T20:10:34",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_23_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 24,
+      "time": "2026-10-14T20:12:58",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_24_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 25,
+      "time": "2026-10-14T20:14:12",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_25_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 26,
+      "time": "2026-10-14T20:21:06",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_26_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 27,
+      "time": "2026-10-14T20:22:43",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_27_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 28,
+      "time": "2026-10-14T20:23:33",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_28_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 29,
+      "time": "2026-10-14T20:30:31",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_29_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 30,
+      "time": "2026-10-14T20:32:08",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_30_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 31,
+      "time": "2026-10-14T20:32:58",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_31_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 32,
+      "time": "2026-10-14T20:40:03",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_32_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 33,
+      "time": "2026-10-14T20:41:41",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_33_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 34,
+      "time": "2026-10-14T20:42:31",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_34_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 35,
+      "time": "2026-10-14T20:49:47",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_35_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 36,
+      "time": "2026-10-14T20:51:24",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_36_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 37,
+      "time": "2026-10-14T20:52:14",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_37_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 38,
+      "time": "2026-10-14T20:55:47",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_38_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 39,
+      "time": "2026-10-14T20:56:38",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_39_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 40,
+      "time": "2026-10-14T20:57:05",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_40_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 41,
+      "time": "2026-10-14T21:00:40",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_41_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 42,
+      "time": "2026-10-14T21:01:31",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_42_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 43,
+      "time": "2026-10-14T21:01:58",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_43_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 44,
+      "time": "2026-10-14T21:05:38",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_44_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 45,
+      "time": "2026-10-14T21:06:28",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_45_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 46,
+      "time": "2026-10-14T21:06:55",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_46_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 47,
+      "time": "2026-10-14T21:10:36",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_47_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 48,
+      "time": "2026-10-14T21:11:27",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_48_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 49,
+      "time": "2026-10-14T21:11:54",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_49_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 50,
+      "time": "2026-10-14T21:18:36",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_50_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 51,
+      "time": "2026-10-14T21:20:13",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_51_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 52,
+      "time": "2026-10-14T21:21:02",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_52_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 53,
+      "time": "2026-10-14T21:27:52",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_53_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 54,
+      "time": "2026-10-14T21:29:27",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_54_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 55,
+      "time": "2026-10-14T21:30:16",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_55_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 56,
+      "time": "2026-10-14T21:37:10",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_56_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 57,
+      "time": "2026-10-14T21:38:45",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_57_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 58,
+      "time": "2026-10-14T21:39:34",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_58_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 59,
+      "time": "2026-10-14T21:46:40",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_59_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 60,
+      "time": "2026-10-14T21:48:16",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_60_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 61,
+      "time": "2026-10-14T21:49:05",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_61_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 62,
+      "time": "2026-10-14T21:54:12",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_62_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 63,
+      "time": "2026-10-14T21:55:24",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_63_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 64,
+      "time": "2026-10-14T21:56:02",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_64_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 65,
+      "time": "2026-10-14T22:01:16",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_65_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 66,
+      "time": "2026-10-14T22:02:30",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_66_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 67,
+      "time": "2026-10-14T22:03:08",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_67_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 68,
+      "time": "2026-10-14T22:08:24",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_68_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 69,
+      "time": "2026-10-14T22:09:36",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_69_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 70,
+      "time": "2026-10-14T22:10:12",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_70_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 71,
+      "time": "2026-10-14T22:15:26",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_71_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 72,
+      "time": "2026-10-14T22:16:37",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_72_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 73,
+      "time": "2026-10-14T22:17:13",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_73_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 74,
+      "time": "2026-10-14T22:20:34",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_74_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 75,
+      "time": "2026-10-14T22:21:23",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_75_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 76,
+      "time": "2026-10-14T22:21:48",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_76_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 77,
+      "time": "2026-10-14T22:25:14",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_77_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 78,
+      "time": "2026-10-14T22:26:02",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_78_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 79,
+      "time": "2026-10-14T22:26:27",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_79_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 80,
+      "time": "2026-10-14T22:29:56",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_80_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 81,
+      "time": "2026-10-14T22:30:45",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_81_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 82,
+      "time": "2026-10-14T22:31:10",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_82_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 83,
+      "time": "2026-10-14T22:34:40",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_83_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 84,
+      "time": "2026-10-14T22:35:28",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_84_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 85,
+      "time": "2026-10-14T22:35:54",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_85_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 86,
+      "time": "2026-10-14T22:37:38",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_86_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 87,
+      "time": "2026-10-14T22:38:04",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_87_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 88,
+      "time": "2026-10-14T22:38:18",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_88_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 89,
+      "time": "2026-10-14T22:40:06",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_89_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 90,
+      "time": "2026-10-14T22:40:32",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_90_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 91,
+      "time": "2026-10-14T22:40:46",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_91_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 92,
+      "time": "2026-10-14T22:42:33",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_92_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 93,
+      "time": "2026-10-14T22:42:59",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_93_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 94,
+      "time": "2026-10-14T22:43:12",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_94_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 95,
+      "time": "2026-10-14T22:45:04",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_95_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 96,
+      "time": "2026-10-14T22:45:31",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_1|big_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_96_node_2_node_1_big_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 97,
+      "time": "2026-10-14T22:45:45",
+      "params": {
+        "source_node": "node_1",
+        "attack_class": "big_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_97_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 98,
+      "time": "2026-10-14T22:58:50",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_98_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 99,
+      "time": "2026-10-14T23:01:56",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_99_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 100,
+      "time": "2026-10-14T23:03:30",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_100_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 101,
+      "time": "2026-10-14T23:16:48",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_101_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 102,
+      "time": "2026-10-14T23:19:53",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_102_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 103,
+      "time": "2026-10-14T23:21:27",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_103_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 104,
+      "time": "2026-10-14T23:34:52",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_104_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 105,
+      "time": "2026-10-14T23:37:57",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_105_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 106,
+      "time": "2026-10-14T23:39:31",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_106_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 107,
+      "time": "2026-10-14T23:53:20",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_107_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 108,
+      "time": "2026-10-14T23:56:25",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1014_108_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 109,
+      "time": "2026-10-14T23:57:58",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_1_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 110,
+      "time": "2026-10-15T00:07:47",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_2_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 111,
+      "time": "2026-10-15T00:10:07",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_3_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 112,
+      "time": "2026-10-15T00:11:18",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_4_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 113,
+      "time": "2026-10-15T00:21:17",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_5_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 114,
+      "time": "2026-10-15T00:23:38",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_6_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 115,
+      "time": "2026-10-15T00:24:49",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_7_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 116,
+      "time": "2026-10-15T00:34:55",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_8_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 117,
+      "time": "2026-10-15T00:37:14",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_9_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 118,
+      "time": "2026-10-15T00:38:24",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_10_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 119,
+      "time": "2026-10-15T00:48:41",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_11_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 120,
+      "time": "2026-10-15T00:50:59",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_12_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 121,
+      "time": "2026-10-15T00:52:10",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_13_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 122,
+      "time": "2026-10-15T00:58:53",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_14_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 123,
+      "time": "2026-10-15T01:00:28",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_15_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 124,
+      "time": "2026-10-15T01:01:17",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_16_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 125,
+      "time": "2026-10-15T01:08:00",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_17_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 126,
+      "time": "2026-10-15T01:09:34",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_18_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 127,
+      "time": "2026-10-15T01:10:22",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_19_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 128,
+      "time": "2026-10-15T01:17:15",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_20_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 129,
+      "time": "2026-10-15T01:18:50",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_21_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 130,
+      "time": "2026-10-15T01:19:38",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_22_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 131,
+      "time": "2026-10-15T01:26:39",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_23_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 132,
+      "time": "2026-10-15T01:28:13",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_24_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 133,
+      "time": "2026-10-15T01:29:01",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_25_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 134,
+      "time": "2026-10-15T01:32:28",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_26_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 135,
+      "time": "2026-10-15T01:33:17",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.5|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_27_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 136,
+      "time": "2026-10-15T01:33:43",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_28_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 137,
+      "time": "2026-10-15T01:37:08",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_29_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 138,
+      "time": "2026-10-15T01:37:58",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.6|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_30_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 139,
+      "time": "2026-10-15T01:38:23",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_31_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 140,
+      "time": "2026-10-15T01:41:52",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_32_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 141,
+      "time": "2026-10-15T01:42:41",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.7|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_33_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 142,
+      "time": "2026-10-15T01:43:07",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_34_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 143,
+      "time": "2026-10-15T01:46:39",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_35_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 144,
+      "time": "2026-10-15T01:47:29",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.2|kp=0.8|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_36_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 145,
+      "time": "2026-10-15T01:47:54",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.2,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_37_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 146,
+      "time": "2026-10-15T01:54:33",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_38_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 147,
+      "time": "2026-10-15T01:56:07",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_39_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 148,
+      "time": "2026-10-15T01:56:55",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_40_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 149,
+      "time": "2026-10-15T02:03:32",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_41_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 150,
+      "time": "2026-10-15T02:05:05",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_42_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 151,
+      "time": "2026-10-15T02:05:53",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_43_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 152,
+      "time": "2026-10-15T02:12:33",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_44_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 153,
+      "time": "2026-10-15T02:14:06",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_45_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 154,
+      "time": "2026-10-15T02:14:53",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_46_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 155,
+      "time": "2026-10-15T02:21:46",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_47_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 156,
+      "time": "2026-10-15T02:23:20",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=100|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_48_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 157,
+      "time": "2026-10-15T02:24:08",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 100,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_49_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 158,
+      "time": "2026-10-15T02:29:02",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_50_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 159,
+      "time": "2026-10-15T02:30:16",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_51_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 160,
+      "time": "2026-10-15T02:30:53",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_52_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 161,
+      "time": "2026-10-15T02:35:59",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_53_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 162,
+      "time": "2026-10-15T02:37:09",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_54_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 163,
+      "time": "2026-10-15T02:37:46",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_55_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 164,
+      "time": "2026-10-15T02:42:55",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_56_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 165,
+      "time": "2026-10-15T02:44:06",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_57_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 166,
+      "time": "2026-10-15T02:44:43",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_58_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 167,
+      "time": "2026-10-15T02:49:54",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_59_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 168,
+      "time": "2026-10-15T02:51:04",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=75|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_60_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 169,
+      "time": "2026-10-15T02:51:40",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 75,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_61_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 170,
+      "time": "2026-10-15T02:55:03",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_62_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 171,
+      "time": "2026-10-15T02:55:52",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_63_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 172,
+      "time": "2026-10-15T02:56:17",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_64_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 173,
+      "time": "2026-10-15T02:59:41",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_65_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 174,
+      "time": "2026-10-15T03:00:29",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_66_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 175,
+      "time": "2026-10-15T03:00:55",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_67_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 176,
+      "time": "2026-10-15T03:04:20",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_68_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 177,
+      "time": "2026-10-15T03:05:08",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_69_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 178,
+      "time": "2026-10-15T03:05:33",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_70_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 179,
+      "time": "2026-10-15T03:09:06",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_71_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 180,
+      "time": "2026-10-15T03:09:54",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=50|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_72_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 181,
+      "time": "2026-10-15T03:10:20",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 50,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_73_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 182,
+      "time": "2026-10-15T03:12:06",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_74_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 183,
+      "time": "2026-10-15T03:12:32",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.5|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_75_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 184,
+      "time": "2026-10-15T03:12:46",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.5,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_76_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 185,
+      "time": "2026-10-15T03:14:34",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_77_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 186,
+      "time": "2026-10-15T03:15:00",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.6|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_78_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 187,
+      "time": "2026-10-15T03:15:14",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.6,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_79_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 188,
+      "time": "2026-10-15T03:17:02",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_80_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 189,
+      "time": "2026-10-15T03:17:29",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.7|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_81_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 190,
+      "time": "2026-10-15T03:17:43",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.7,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=30": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_82_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 191,
+      "time": "2026-10-15T03:19:33",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 30
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=20": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_83_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 192,
+      "time": "2026-10-15T03:19:59",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 20
+      }
+    },
+    "node_3|small_hello_kitty|sr=0.1|kp=0.8|nm=25|ep=10": {
+      "output_dir": "/home/user906/2024_SooN/E2EDT/transfer/distill_report/1014/1015_84_node_2_node_3_small_hello_kitty_20261008_184746_node1_white_square_big_hello_kitty_clean_node2_white_square_clean_node3_small_hello_kitty_color_grid_clean_node4_white_grid_green_square_clean",
+      "excel_row": 193,
+      "time": "2026-10-15T03:20:14",
+      "params": {
+        "source_node": "node_3",
+        "attack_class": "small_hello_kitty",
+        "sample_ratio": 0.1,
+        "keep_prob": 0.8,
+        "num_masks_per_image": 25,
+        "epochs": 10
+      }
+    }
+  },
+  "failed": {},
+  "xlsx_path": "/home/user906/2024_SooN/E2EDT/transfer/excel_export/sweep_node2_20261014_180352.xlsx",
+  "updated_at": "2026-10-15T03:20:14"
+}
