@@ -65,7 +65,7 @@ torch.backends.cudnn.benchmark = True
 # square/grid 與 hello_kitty 分開，避免同一透明度下視覺強度差太大。
 # =============================================================================
 DEFAULTS = {
-    "node_specs": "node_1=white_square,big_hello_kitty,clean;node_2=white_square,clean;node_3=small_hello_kitty,color_grid,clean;node_4=white_grid,green_square,clean",
+    "node_specs": "node_1=white_square,big_hello_kitty,color_grid,clean;node_2=white_square,small_hello_kitty,white_grid,clean;node_3=big_hello_kitty,small_hello_kitty,green_square,clean;node_4=color_grid,white_grid,green_square,clean",
     "dataset_root": _NODE_DATASET_DIR,          # 相對路徑請從本腳本目錄執行時自行改
     "trigger_dir": "",                          # 空= dataset_root/Attack_trigger_image
     "generated_root": "",                       # 空= dataset_root/generated
