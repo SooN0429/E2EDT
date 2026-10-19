@@ -159,6 +159,11 @@ def load_patch_config(
     cfg["MASK_BEFORE_OR_AFTER_NORMALIZATION"] = timing
     cfg["MASK_BASELINE"] = baseline
     cfg["RANDOM_SEED"] = int(cfg["RANDOM_SEED"])
+    # Optional: mask Bernoulli RNG seed; defaults to RANDOM_SEED for back-compat.
+    if cfg.get("MASK_SEED") is None:
+        cfg["MASK_SEED"] = cfg["RANDOM_SEED"]
+    else:
+        cfg["MASK_SEED"] = int(cfg["MASK_SEED"])
     cfg["IMAGE_SIZE"] = int(cfg.get("IMAGE_SIZE", 224))
     cfg["WRITE_PREVIEWS"] = bool(cfg.get("WRITE_PREVIEWS", False))
     cfg["_config_path"] = path
@@ -458,12 +463,12 @@ def denormalize_to_uint8(tensor: torch.Tensor) -> np.ndarray:
 
 
 def _mask_rng_for_image(
-    random_seed: int,
+    mask_seed: int,
     image_id: str,
 ) -> np.random.Generator:
-    """Deterministic per-image Generator from RANDOM_SEED + image_id."""
+    """Deterministic per-image Generator from MASK_SEED + image_id."""
     # Stable 32-bit seed derived from seed and image_id.
-    data = f"{random_seed}:{image_id}".encode("utf-8")
+    data = f"{mask_seed}:{image_id}".encode("utf-8")
     h = 2166136261
     for byte in data:
         h ^= byte
@@ -569,10 +574,11 @@ def generate_patch_dataset(
         "n_selected": len(selected),
         "SAMPLE_RATIO": patch_cfg["SAMPLE_RATIO"],
         "RANDOM_SEED": patch_cfg["RANDOM_SEED"],
+        "MASK_SEED": patch_cfg["MASK_SEED"],
         "selected_indices": selected_indices,
         "full_samples": samples,
         "selected_samples": selected,
-        "mask_rng_scheme": "fnv1a32(RANDOM_SEED:image_id) -> numpy Generator",
+        "mask_rng_scheme": "fnv1a32(MASK_SEED:image_id) -> numpy Generator",
     }
     with open(
         os.path.join(out_dir, "selected_samples.json"), "w", encoding="utf-8"
@@ -584,9 +590,12 @@ def generate_patch_dataset(
         "output_dir": out_dir,
         "patch_config_path": patch_cfg.get("_config_path"),
         "patch_config": {
-            k: patch_cfg[k]
-            for k in PATCH_CONFIG_KEYS
-            if k in patch_cfg
+            **{
+                k: patch_cfg[k]
+                for k in PATCH_CONFIG_KEYS
+                if k in patch_cfg
+            },
+            "MASK_SEED": patch_cfg["MASK_SEED"],
         },
         "training_report": {
             "run_dir": plan["run_dir"],
@@ -611,7 +620,7 @@ def generate_patch_dataset(
             "n_selected": len(selected),
             "selected_indices": selected_indices,
         },
-        "mask_rng_scheme": "fnv1a32(RANDOM_SEED:image_id) -> numpy Generator",
+        "mask_rng_scheme": "fnv1a32(MASK_SEED:image_id) -> numpy Generator",
         "formula": "tilde_x = B odot x + (1-B) odot x_baseline (after Normalize)",
     }
     with open(
@@ -644,7 +653,7 @@ def generate_patch_dataset(
             )
 
             img_rng = _mask_rng_for_image(
-                int(patch_cfg["RANDOM_SEED"]), image_id
+                int(patch_cfg["MASK_SEED"]), image_id
             )
             patch_masks = bernoulli_patch_masks(
                 rows, cols, n_masks, keep_prob, img_rng
