@@ -20,12 +20,18 @@ training_report/
 **/matching_result/
 **/localization_result/
 **/distill_result/
+**/distill_report/
 **/patch_generated/
 **/features/
 *.npy
 
 # node_dataset: per-node image splits (train/val/test), not scripts
 node_dataset/node_*/
+
+# Local secrets (email notify script with app password)
+transfer/notify_done.py
+transfer/param_sweep.py
+transfer/excel.py
 
 # IDE設定檔
 pyrightconfig.json
