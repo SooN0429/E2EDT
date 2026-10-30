@@ -28,12 +28,16 @@ _MATCHING_DIR = os.path.join(_E2EDT_ROOT, "matching")
 _DEFAULT_TRAINING_NOTE = os.path.join(
     _E2EDT_ROOT, "node_model_training", "training_report"
 )
-_DEFAULT_DISTILL_ROOT = os.path.join(_SCRIPT_DIR, "distill_result")
+_DEFAULT_DISTILL_ROOT = os.path.join(_SCRIPT_DIR, "KD", "distill_result")
 
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 if _MATCHING_DIR not in sys.path:
     sys.path.insert(0, _MATCHING_DIR)
+for _sub in ("patch_data_generate", "localization", "KD"):
+    _p = os.path.join(_SCRIPT_DIR, _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import patch_data_generate as patch_gen  # noqa: E402
 import specific_localziation as loc  # noqa: E402

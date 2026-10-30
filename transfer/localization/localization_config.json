@@ -36,7 +36,7 @@
     "patch_run_dir": "必填。patch_data_generate 產出的 patch_generated/<run>/ 路徑；localization 只讀取此目錄，不會自動再跑產生器。",
     "checkpoint_path": "來源模型 .pth 路徑（Transfer_Net_ResNet18）。null 時改從 training_report 的 checkpoints/index.json 依 node 解析。",
     "training_report_dir": "可覆寫 patch config_resolved 內的 training_report.run_dir；用於找 checkpoint index。",
-    "output_root": "localization 結果根目錄。null 時預設為 transfer/localization_result/。",
+    "output_root": "localization 結果根目錄。null 時預設為 transfer/localization/localization_result/。",
     "output_dir": "若指定則直接寫入此目錄；null 時在 output_root 下自動命名。",
     "extracted_layer": "與訓練時一致的 backbone 切點（5/6/7/8_point）；決定哪些 BasicBlock 掛 M_H/M_O。",
     "device": "運算裝置，例如 cuda:0 或 cpu。",

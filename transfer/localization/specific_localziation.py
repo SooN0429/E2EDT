@@ -27,7 +27,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", ".."))
 _NODE_TRAINING_DIR = os.path.join(_E2EDT_ROOT, "node_model_training")
 _DEFAULT_CONFIG = os.path.join(_SCRIPT_DIR, "localization_config.json")
 _DEFAULT_OUTPUT_ROOT = os.path.join(_SCRIPT_DIR, "localization_result")

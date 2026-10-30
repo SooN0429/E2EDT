@@ -27,12 +27,14 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, transforms
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", ".."))
 _NODE_TRAINING_DIR = os.path.join(_E2EDT_ROOT, "node_model_training")
 _NODE_DATASET_DIR = os.path.join(_E2EDT_ROOT, "node_dataset")
 _DEFAULT_CONFIG = os.path.join(_SCRIPT_DIR, "distill_config.json")
 _DEFAULT_OUTPUT_ROOT = os.path.join(_SCRIPT_DIR, "distill_result")
 _DEFAULT_TRAINING_REPORT_ROOT = os.path.join(_NODE_TRAINING_DIR, "training_report")
+
+_LOC_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "localization"))
 
 if _NODE_TRAINING_DIR not in sys.path:
     sys.path.insert(0, _NODE_TRAINING_DIR)
@@ -40,6 +42,8 @@ if _NODE_DATASET_DIR not in sys.path:
     sys.path.insert(0, _NODE_DATASET_DIR)
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
+if _LOC_DIR not in sys.path:
+    sys.path.insert(0, _LOC_DIR)
 
 from model_architecture import backbone_multi, model_resnet18  # noqa: E402
 import node_traindata_generate as ntdg  # noqa: E402

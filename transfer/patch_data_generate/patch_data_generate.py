@@ -27,7 +27,7 @@ from PIL import Image
 from torchvision import transforms
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
+_E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", ".."))
 _NODE_DATASET_DIR = os.path.join(_E2EDT_ROOT, "node_dataset")
 _MATCHING_DIR = os.path.join(_E2EDT_ROOT, "matching")
 _DEFAULT_TRAINING_NOTE = os.path.join(
