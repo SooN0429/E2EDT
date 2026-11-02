@@ -1,510 +1,391 @@
 #!/usr/bin/env python3
-"""End-to-end transfer orchestration: patch → localization → distill.
+"""Stage 2 — E2EDT: insert subnet into target, distill, compare baselines.
 
-以互動式（或 CLI）選擇一次 training_report 方案、目標／來源節點，
-以及來源攻擊類別；接著在同一行程內依序執行三支轉移腳本，
-並將蒸餾結果目錄命名為
-  {MMDD}_{當日序號}_{目標節點}_{來源節點}_{攻擊類}_{完整run名稱}/
-保留 10 張 preview PNG（同一 image_id 的 1 張 reference_all_ones + 9 張遮罩圖），
-並清理本次 run 在 patch_generated 下的大型產物。
-執行範例：
-python E2EDT.py --target_node node_2 --source_node node_4 --attack_class white_grid
+Requires Stage1 ``source_preparation.py`` output (``--prep_dir``) or an existing
+``--localization_run_dir``. Compares the distilled student against:
+  1) from-scratch model (source new-class images + target old-class images)
+  2) original target model (pre-transfer)
+
+Reports wall-clock, SAMPLE_RATIO original-image count vs scratch labeled images,
+training FLOPs, and per-class F1/recall/acc (with old-class drop / new-class gain).
+
+範例：
+  python E2EDT.py --prep_dir ./source_prep/<run> --target_node node_2 --device cuda:0
+  python E2EDT.py --localization_run_dir ./localization/localization_result/<run> \\
+      --target_node node_2 --run_dir /path/to/training_report/<run>
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import re
-import shutil
 import sys
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional
+
+import torch
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
-_MATCHING_DIR = os.path.join(_E2EDT_ROOT, "matching")
-_DEFAULT_TRAINING_NOTE = os.path.join(
-    _E2EDT_ROOT, "node_model_training", "training_report"
-)
-_DEFAULT_DISTILL_ROOT = os.path.join(_SCRIPT_DIR, "KD", "distill_result")
+_COMPARE_DIR = os.path.join(_SCRIPT_DIR, "E2EDT_compare")
 
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
-if _MATCHING_DIR not in sys.path:
-    sys.path.insert(0, _MATCHING_DIR)
+if _COMPARE_DIR not in sys.path:
+    sys.path.insert(0, _COMPARE_DIR)
 for _sub in ("patch_data_generate", "localization", "KD"):
     _p = os.path.join(_SCRIPT_DIR, _sub)
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-import patch_data_generate as patch_gen  # noqa: E402
-import specific_localziation as loc  # noqa: E402
+import e2edt_common as common  # noqa: E402
+import compute_resources as cres  # noqa: E402
+import comparison_eval as ceval  # noqa: E402
 import knowledgedistill as distill  # noqa: E402
-from diffvector_data_generate import load_latest_training_plan  # noqa: E402
+import scratch_baseline as scratch  # noqa: E402
+import patch_data_generate as patch_gen  # noqa: E402
 
-REFERENCE_MASK_ID = "reference_all_ones"
-KEEP_N_MASKS = 9
-KEEP_TOTAL = 1 + KEEP_N_MASKS  # 10
-
-
-# ---------------------------------------------------------------------------
-# Training report listing / interactive select
-# ---------------------------------------------------------------------------
+_DEFAULT_TRAINING_NOTE = common._DEFAULT_TRAINING_NOTE
+_DEFAULT_DISTILL_ROOT = common._DEFAULT_DISTILL_ROOT
 
 
-def list_training_reports(training_note_root: str) -> List[Tuple[str, str]]:
-    """Return [(created_at, run_dir), ...] ascending by created_at."""
-    root = os.path.abspath(training_note_root)
-    if not os.path.isdir(root):
-        raise FileNotFoundError(f"training_report root not found: {root}")
-    candidates: List[Tuple[str, str]] = []
-    for name in os.listdir(root):
-        run_dir = os.path.join(root, name)
-        cfg_path = os.path.join(run_dir, "config.json")
-        if not os.path.isdir(run_dir) or not os.path.isfile(cfg_path):
-            continue
-        with open(cfg_path, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-        created = cfg.get("created_at") or ""
-        if not created:
-            created = datetime.fromtimestamp(os.path.getmtime(run_dir)).isoformat(
-                timespec="seconds"
-            )
-        candidates.append((created, run_dir))
-    candidates.sort(key=lambda x: x[0])
-    return candidates
+def _resolve_prep(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    if cfg.get("prep_dir"):
+        manifest = common.load_source_prep_manifest(cfg["prep_dir"])
+        return manifest
 
-
-def load_checkpoint_index(run_dir: str) -> Dict[str, Any]:
-    index_path = os.path.join(os.path.abspath(run_dir), "checkpoints", "index.json")
-    if not os.path.isfile(index_path):
-        raise FileNotFoundError(f"checkpoints/index.json not found under {run_dir}")
-    with open(index_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def attack_classes_for_node(node_specs: Dict[str, List[str]], node: str) -> List[str]:
-    if node not in node_specs:
-        raise KeyError(f"node {node!r} not in node_specs")
-    return [c for c in node_specs[node] if c != "clean"]
-
-
-def _prompt_choice(prompt: str, options: Sequence[str], default_idx: int = 0) -> int:
-    if not options:
-        raise ValueError("No options to choose from")
-    print(prompt)
-    for i, label in enumerate(options, start=1):
-        mark = " (default)" if (i - 1) == default_idx else ""
-        print(f"  [{i}] {label}{mark}")
-    while True:
-        raw = input(f"Select [1-{len(options)}] (Enter={default_idx + 1}): ").strip()
-        if raw == "":
-            return default_idx
-        if raw.isdigit():
-            idx = int(raw) - 1
-            if 0 <= idx < len(options):
-                return idx
-        print(f"[WARN] invalid choice: {raw!r}")
-
-
-def resolve_selections(
-    training_note_root: str,
-    run_dir: Optional[str],
-    target_node: Optional[str],
-    source_node: Optional[str],
-    attack_class: Optional[str],
-) -> Dict[str, Any]:
-    reports = list_training_reports(training_note_root)
-    if not reports:
-        raise FileNotFoundError(f"No training runs under {training_note_root}")
-
-    if run_dir:
-        chosen_dir = os.path.abspath(run_dir)
-        if not os.path.isfile(os.path.join(chosen_dir, "config.json")):
-            raise FileNotFoundError(f"Invalid --run_dir (no config.json): {chosen_dir}")
-    else:
-        # Newest last in reports; Enter accepts latest
-        default_idx = len(reports) - 1
-        labels = [
-            f"{os.path.basename(d)}  (created_at={c})" for c, d in reports
-        ]
-        idx = _prompt_choice(
-            "Select training_report scheme (default = latest):",
-            labels,
-            default_idx=default_idx,
-        )
-        chosen_dir = reports[idx][1]
-
-    plan = load_latest_training_plan(training_note_root, run_dir=chosen_dir)
-    index = load_checkpoint_index(chosen_dir)
-    nodes_with_ckpt = sorted(index.get("nodes", {}).keys())
-    node_specs: Dict[str, List[str]] = plan["node_specs"]
-    available = [n for n in nodes_with_ckpt if n in node_specs]
-    if len(available) < 2:
-        raise RuntimeError(
-            f"Need at least 2 nodes with checkpoints under {chosen_dir}; "
-            f"got {available}"
-        )
-
-    def _pick_node(label: str, current: Optional[str], exclude: Optional[str]) -> str:
-        opts = [n for n in available if n != exclude]
-        if current:
-            if current not in available:
-                raise KeyError(f"{label} {current!r} not in {available}")
-            if exclude and current == exclude:
-                raise ValueError(f"{label} must differ from {exclude}")
-            return current
-        labels = [
-            f"{n}: classes={node_specs[n]}" for n in opts
-        ]
-        i = _prompt_choice(f"Select {label}:", labels, default_idx=0)
-        return opts[i]
-
-    tgt = _pick_node("target_node", target_node, exclude=None)
-    src = _pick_node("source_node", source_node, exclude=tgt)
-    if tgt == src:
-        raise ValueError("target_node and source_node must differ")
-
-    attacks = attack_classes_for_node(node_specs, src)
-    if not attacks:
-        raise RuntimeError(f"source {src} has no attack classes (only clean?)")
-
-    if attack_class:
-        _, atk_name, _ = patch_gen.resolve_attack_class_index(
-            node_specs[src], attack_class
-        )
-    else:
-        i = _prompt_choice(
-            f"Select source attack class for {src}:",
-            attacks,
-            default_idx=0,
-        )
-        atk_name = attacks[i]
-
-    target_classes = list(index["nodes"][tgt]["classes"])
-    if atk_name in target_classes:
+    loc_dir = cfg.get("localization_run_dir")
+    if not loc_dir:
+        raise ValueError("Provide --prep_dir or --localization_run_dir")
+    loc_dir = os.path.abspath(loc_dir)
+    loc_cfg = common.load_json(os.path.join(loc_dir, "config.json"))
+    patch_run_dir = os.path.abspath(loc_cfg["patch_run_dir"])
+    src_img = common.count_sample_ratio_source_images(patch_run_dir)
+    run_dir = cfg.get("run_dir") or loc_cfg.get("training_report_dir")
+    if not run_dir:
         raise ValueError(
-            f"attack class {atk_name!r} already in target {tgt} classes "
-            f"{target_classes}; pick another attack or target"
+            "When using --localization_run_dir without --prep_dir, "
+            "pass --run_dir (training_report)."
         )
-
-    print(
-        f"[INFO] scheme={plan['run_name']}\n"
-        f"[INFO] target={tgt} classes={target_classes}\n"
-        f"[INFO] source={src} attack={atk_name} "
-        f"classes={node_specs[src]}"
+    source_node = (
+        loc_cfg.get("resolved_node")
+        or loc_cfg.get("resolved_node_name")
+        or loc_cfg.get("node_name")
     )
+    attack = (
+        loc_cfg.get("resolved_attack_class")
+        or loc_cfg.get("target_class")
+        or loc_cfg.get("attack_class")
+    )
+    if not source_node or not attack:
+        raise ValueError(
+            "Cannot infer source_node/attack_class from localization config; "
+            "use --prep_dir or ensure loc config has resolved fields."
+        )
+    plan_name = os.path.basename(os.path.abspath(run_dir))
     return {
-        "run_dir": chosen_dir,
-        "run_name": plan["run_name"],
-        "plan": plan,
-        "target_node": tgt,
-        "source_node": src,
-        "attack_class": atk_name,
-        "target_classes": target_classes,
-        "source_classes": list(node_specs[src]),
+        "training_report_dir": os.path.abspath(run_dir),
+        "run_name": plan_name,
+        "source_node": source_node,
+        "attack_class": attack,
+        "patch_run_dir": patch_run_dir,
+        "localization_run_dir": loc_dir,
+        "sample_ratio": src_img.get("sample_ratio"),
+        "n_source_images": src_img.get("n_source_images"),
+        "source_image_ids": src_img.get("image_ids"),
+        "prep_dir": None,
     }
 
 
-# ---------------------------------------------------------------------------
-# Distill result naming: {MMDD}_{seq}_{target}_{source}_{attack}_{run_name}
-# ---------------------------------------------------------------------------
-
-
-_DAY_SEQ_RE = re.compile(r"^(\d{4})_(\d+)_")
-
-
-def next_day_seq(output_root: str, mmdd: str) -> int:
-    root = os.path.abspath(output_root)
-    if not os.path.isdir(root):
-        return 1
-    max_seq = 0
-    prefix = f"{mmdd}_"
-    for name in os.listdir(root):
-        if not name.startswith(prefix):
-            continue
-        m = _DAY_SEQ_RE.match(name)
-        if not m or m.group(1) != mmdd:
-            continue
-        try:
-            max_seq = max(max_seq, int(m.group(2)))
-        except ValueError:
-            continue
-    return max_seq + 1
-
-
-def make_e2edt_output_dir(
-    output_root: str,
+def _reload_student_teacher(
+    distill_out: str,
+    localization_run_dir: str,
     target_node: str,
-    source_node: str,
-    attack_class: str,
-    run_name: str,
-) -> str:
-    mmdd = datetime.now().strftime("%m%d")
-    seq = next_day_seq(output_root, mmdd)
-    safe_atk = str(attack_class).replace("/", "_").replace(" ", "_")
-    folder = f"{mmdd}_{seq}_{target_node}_{source_node}_{safe_atk}_{run_name}"
-    out = os.path.join(os.path.abspath(output_root), folder)
-    os.makedirs(out, exist_ok=True)
-    return out
-
-
-# ---------------------------------------------------------------------------
-# Keep 10 previews from one image_id, then cleanup patch
-# ---------------------------------------------------------------------------
-
-
-def _safe_image_id_dirname(image_id: str) -> str:
-    return image_id.replace("/", "__").replace("\\", "__")
-
-
-def copy_confirm_patch_samples(
-    patch_run_dir: str,
-    dest_root: str,
-    n_masks: int = KEEP_N_MASKS,
-) -> Dict[str, Any]:
-    """
-    Copy 1 reference_all_ones + n_masks other mask previews from a single
-    image_id into dest_root/confirm_patch_samples/<safe_image_id>/.
-    """
-    patch_run_dir = os.path.abspath(patch_run_dir)
-    previews_root = os.path.join(patch_run_dir, "previews")
-    selected_path = os.path.join(patch_run_dir, "selected_samples.json")
-    info: Dict[str, Any] = {
-        "image_id": None,
-        "copied": [],
-        "warnings": [],
-    }
-
-    if not os.path.isdir(previews_root):
-        info["warnings"].append(f"previews missing: {previews_root}")
-        print(f"[WARN] {info['warnings'][-1]}")
-        return info
-
-    image_ids: List[str] = []
-    if os.path.isfile(selected_path):
-        with open(selected_path, "r", encoding="utf-8") as f:
-            sel = json.load(f)
-        for s in sel.get("selected_samples") or []:
-            if s.get("image_id"):
-                image_ids.append(s["image_id"])
-
-    if not image_ids:
-        # Fallback: walk previews tree for dirs that contain reference
-        for dirpath, _dirnames, filenames in os.walk(previews_root):
-            if f"{REFERENCE_MASK_ID}.png" in filenames:
-                rel = os.path.relpath(dirpath, previews_root)
-                if rel != ".":
-                    image_ids.append(rel.replace(os.sep, "/"))
-
-    chosen_id: Optional[str] = None
-    chosen_dir: Optional[str] = None
-    for iid in image_ids:
-        pdir = os.path.join(previews_root, iid.replace("/", os.sep))
-        ref = os.path.join(pdir, f"{REFERENCE_MASK_ID}.png")
-        if os.path.isfile(ref):
-            chosen_id = iid
-            chosen_dir = pdir
-            break
-
-    if not chosen_id or not chosen_dir:
-        info["warnings"].append("no image_id with reference_all_ones.png found")
-        print(f"[WARN] {info['warnings'][-1]}")
-        return info
-
-    info["image_id"] = chosen_id
-    out_dir = os.path.join(
-        os.path.abspath(dest_root),
-        "confirm_patch_samples",
-        _safe_image_id_dirname(chosen_id),
+    run_dir: str,
+    training_note_root: str,
+    device: torch.device,
+):
+    loc_info = distill.resolve_localization(localization_run_dir)
+    target_info = distill.resolve_target(
+        {
+            "target_node": target_node,
+            "target_training_report_dir": run_dir,
+            "training_report_root": training_note_root,
+        }
     )
-    os.makedirs(out_dir, exist_ok=True)
-
-    ref_src = os.path.join(chosen_dir, f"{REFERENCE_MASK_ID}.png")
-    ref_dst = os.path.join(out_dir, f"{REFERENCE_MASK_ID}.png")
-    shutil.copy2(ref_src, ref_dst)
-    info["copied"].append(ref_dst)
-
-    mask_files = sorted(
-        f
-        for f in os.listdir(chosen_dir)
-        if f.startswith("mask_") and f.endswith(".png")
+    n_old = len(target_info["class_names"])
+    student, teacher = distill.build_student_and_teacher(
+        target_ckpt=target_info["checkpoint_path"],
+        n_old=n_old,
+        extracted_layer=loc_info["extracted_layer"],
+        loc_info=loc_info,
+        device=device,
     )
-    for name in mask_files[:n_masks]:
-        src = os.path.join(chosen_dir, name)
-        dst = os.path.join(out_dir, name)
-        shutil.copy2(src, dst)
-        info["copied"].append(dst)
-
-    if len(info["copied"]) < KEEP_TOTAL:
-        msg = (
-            f"only copied {len(info['copied'])}/{KEEP_TOTAL} previews "
-            f"for image_id={chosen_id}"
-        )
-        info["warnings"].append(msg)
-        print(f"[WARN] {msg}")
-    else:
-        print(
-            f"[INFO] confirm_patch_samples: {len(info['copied'])} PNGs "
-            f"from image_id={chosen_id} -> {out_dir}"
-        )
-
-    meta_path = os.path.join(
-        os.path.abspath(dest_root), "confirm_patch_samples", "meta.json"
+    blob = torch.load(
+        os.path.join(distill_out, "student_state_dict.pt"), map_location="cpu"
     )
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(info, f, indent=2, ensure_ascii=False)
-    return info
+    student.adapter.load_state_dict(blob["adapter"])
+    student.classifier_layer.load_state_dict(blob["classifier_layer"])
+    student.eval()
+    teacher.eval()
+    return student, teacher, loc_info, target_info
 
 
-# ---------------------------------------------------------------------------
-# Pipeline
-# ---------------------------------------------------------------------------
-
-
-def run_e2edt(cfg: Dict[str, Any]) -> str:
+def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
     training_note_root = os.path.abspath(
         cfg.get("training_note_root") or _DEFAULT_TRAINING_NOTE
     )
-    sel = resolve_selections(
-        training_note_root=training_note_root,
-        run_dir=cfg.get("run_dir"),
-        target_node=cfg.get("target_node"),
-        source_node=cfg.get("source_node"),
-        attack_class=cfg.get("attack_class"),
-    )
+    prep = _resolve_prep(cfg)
+    run_dir = os.path.abspath(prep["training_report_dir"])
+    source_node = prep["source_node"]
+    attack_class = prep["attack_class"]
+    localization_run_dir = os.path.abspath(prep["localization_run_dir"])
+    patch_run_dir = os.path.abspath(prep["patch_run_dir"])
+    n_source_images = int(prep.get("n_source_images") or 0)
+    sample_ratio = prep.get("sample_ratio")
 
-    device = cfg.get("device")
+    tgt = common.resolve_target_selection(
+        training_note_root=training_note_root,
+        run_dir=run_dir,
+        target_node=cfg.get("target_node"),
+        source_node=source_node,
+        attack_class=attack_class,
+    )
+    target_node = tgt["target_node"]
+    target_classes = list(tgt["target_classes"])
+    run_name = tgt["run_name"]
+
+    device_s = cfg.get("device") or "cuda:0"
+    if str(device_s).startswith("cuda") and not torch.cuda.is_available():
+        print("[WARN] CUDA not available; falling back to cpu")
+        device_s = "cpu"
+    device = torch.device(device_s)
+
     distill_root = os.path.abspath(cfg.get("output_root") or _DEFAULT_DISTILL_ROOT)
     os.makedirs(distill_root, exist_ok=True)
-
-    out_dir = make_e2edt_output_dir(
+    out_dir = common.make_e2edt_output_dir(
         output_root=distill_root,
-        target_node=sel["target_node"],
-        source_node=sel["source_node"],
-        attack_class=sel["attack_class"],
-        run_name=sel["run_name"],
+        target_node=target_node,
+        source_node=source_node,
+        attack_class=attack_class,
+        run_name=run_name,
     )
-    print(f"[INFO] distill output_dir={out_dir}")
+    print(f"[INFO] E2EDT Stage2 output_dir={out_dir}")
 
-    # --- 1) Patch data (force previews) ---
-    patch_overrides: Dict[str, Any] = {"WRITE_PREVIEWS": True}
-    patch_cfg = patch_gen.load_patch_config(
-        cfg.get("patch_config"), overrides=patch_overrides
-    )
-    print("[INFO] === patch_data_generate ===")
-    patch_result = patch_gen.generate_patch_dataset(
-        node_name=sel["source_node"],
-        attack_class=sel["attack_class"],
-        patch_cfg=patch_cfg,
-        training_note_root=training_note_root,
-        run_dir=sel["run_dir"],
-        output_root=cfg.get("patch_output_root") or patch_gen._DEFAULT_OUTPUT_ROOT,
-        dry_run=False,
-    )
-    patch_run_dir = patch_result["output_dir"]
-
-    # --- 2) Localization ---
-    print("[INFO] === specific_localization ===")
-    loc_overrides: Dict[str, Any] = {
-        "patch_run_dir": patch_run_dir,
-        "training_report_dir": sel["run_dir"],
-    }
-    if device:
-        loc_overrides["device"] = device
-    loc_cfg = loc.load_localization_config(
-        cfg.get("localization_config"), overrides=loc_overrides
-    )
-    localization_run_dir = loc.run_localization(loc_cfg)
-
-    # --- 3) Distill ---
+    # --- Distill (skip built-in target-only eval; we use 2B test) ---
     print("[INFO] === knowledgedistill ===")
     distill_overrides: Dict[str, Any] = {
         "localization_run_dir": localization_run_dir,
-        "target_node": sel["target_node"],
-        "target_training_report_dir": sel["run_dir"],
+        "target_node": target_node,
+        "target_training_report_dir": run_dir,
         "training_report_root": training_note_root,
         "output_dir": out_dir,
+        "skip_eval": True,
+        "device": device_s,
     }
-    if device:
-        distill_overrides["device"] = device
+    if cfg.get("epochs") is not None:
+        distill_overrides["epochs"] = int(cfg["epochs"])
+    if cfg.get("distill_lr") is not None:
+        distill_overrides["lr"] = float(cfg["distill_lr"])
+    if cfg.get("batch_size") is not None:
+        distill_overrides["batch_size"] = int(cfg["batch_size"])
+    if cfg.get("seed") is not None:
+        distill_overrides["seed"] = int(cfg["seed"])
+
     distill_cfg = distill.load_distill_config(
         cfg.get("distill_config"), overrides=distill_overrides
     )
-    final_dir = distill.run_distill(distill_cfg)
+    distill_out = distill.run_distill(distill_cfg)
 
-    # --- 4) Keep 10 previews, cleanup patch ---
-    print("[INFO] === confirm_patch_samples + cleanup patch ===")
-    copy_confirm_patch_samples(patch_run_dir, final_dir)
-    patch_gen.cleanup_patch_generated(patch_run_dir, keep_manifest=True)
+    student, teacher, loc_info, target_info = _reload_student_teacher(
+        distill_out,
+        localization_run_dir,
+        target_node,
+        run_dir,
+        training_note_root,
+        device,
+    )
+    extracted = loc_info["extracted_layer"]
+    eval_classes = list(target_classes) + [attack_class]
 
-    # Orchestration snapshot alongside distill config
-    orch_path = os.path.join(final_dir, "e2edt_pipeline.json")
-    with open(orch_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "training_report_dir": sel["run_dir"],
-                "run_name": sel["run_name"],
-                "target_node": sel["target_node"],
-                "source_node": sel["source_node"],
-                "attack_class": sel["attack_class"],
-                "patch_run_dir": patch_run_dir,
-                "localization_run_dir": localization_run_dir,
-                "output_dir": final_dir,
-            },
-            f,
-            indent=2,
-            ensure_ascii=False,
+    # Distill FLOPs (one forward of student on a patch-sized or ImageNet-sized tensor)
+    distill_stats = common.load_json(
+        os.path.join(distill_out, "distill_train_stats.json")
+    )
+    try:
+        # Use ImageNet-size input consistent with eval / typical image forward
+        example = torch.randn(1, 3, 224, 224, device=device)
+        flop_info = cres.measure_forward_flops(
+            lambda x: student.predict(x, detach=False),
+            example,
+            model_for_profile=student,
         )
+        distill_resources = cres.pack_resource_report(
+            wall_clock_sec=float(distill_stats["wall_clock_sec"]),
+            n_train_steps=int(distill_stats["n_train_steps"]),
+            forward_flops=float(flop_info["forward_flops"]),
+            epoch_times=list(distill_stats.get("epoch_times_sec") or []),
+            extra={"forward_profile": flop_info, "label_data_note": "see comparison"},
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] distill FLOPs measure failed: {e}")
+        distill_resources = cres.pack_resource_report(
+            wall_clock_sec=float(distill_stats["wall_clock_sec"]),
+            n_train_steps=int(distill_stats["n_train_steps"]),
+            forward_flops=None,
+            epoch_times=list(distill_stats.get("epoch_times_sec") or []),
+        )
+    common.save_json(
+        os.path.join(out_dir, "distill_resources.json"), distill_resources
+    )
 
-    print(f"[INFO] E2EDT done -> {final_dir}")
-    return final_dir
+    # --- From-scratch baseline (2B) ---
+    print("[INFO] === scratch baseline (cross-node) ===")
+    scratch_epochs = int(cfg.get("scratch_epochs") or 50)
+    scratch_result = scratch.run_scratch_baseline(
+        dataset_root=target_info["dataset_root"],
+        target_node=target_node,
+        source_node=source_node,
+        old_classes=target_classes,
+        new_class=attack_class,
+        trigger_dir=target_info["trigger_dir"],
+        extracted_layer=extracted,
+        device=device,
+        output_dir=out_dir,
+        blended_alpha_square=target_info["blended_alpha_square"],
+        blended_alpha_hello_kitty=target_info["blended_alpha_hello_kitty"],
+        seed=int(cfg.get("seed") or 42),
+        epochs=scratch_epochs,
+        batch_size=int(cfg.get("scratch_batch_size") or 8),
+        lr=float(cfg.get("scratch_lr") or 1e-4),
+    )
+    scratch_model = scratch_result["model"]
+    scratch_resources = scratch_result["resources"]
+    test_root = scratch_result["test_root"]
+
+    # --- Unified eval on 2B test set ---
+    print("[INFO] === unified comparison eval ===")
+    bs = int(cfg.get("eval_batch_size") or 32)
+    e2edt_metrics = ceval.evaluate_predict_fn(
+        lambda x: student.predict(x, detach=False),
+        test_root=test_root,
+        eval_class_names=eval_classes,
+        device=device,
+        batch_size=bs,
+    )
+    scratch_metrics = ceval.evaluate_predict_fn(
+        lambda x: scratch_model.predict(x, test_flag=1),
+        test_root=test_root,
+        eval_class_names=eval_classes,
+        device=device,
+        batch_size=bs,
+    )
+    original_metrics = ceval.evaluate_predict_fn(
+        lambda x: teacher.predict(x, test_flag=1),
+        test_root=test_root,
+        eval_class_names=eval_classes,
+        device=device,
+        batch_size=bs,
+        n_logits=len(target_classes),
+    )
+    common.save_json(os.path.join(out_dir, "metrics_e2edt.json"), e2edt_metrics)
+    common.save_json(os.path.join(out_dir, "metrics_scratch.json"), scratch_metrics)
+    common.save_json(
+        os.path.join(out_dir, "metrics_original_target.json"), original_metrics
+    )
+
+    report = ceval.build_comparison_report(
+        e2edt_metrics=e2edt_metrics,
+        scratch_metrics=scratch_metrics,
+        original_metrics=original_metrics,
+        distill_resources=distill_resources,
+        scratch_resources=scratch_resources,
+        n_source_images=n_source_images,
+        sample_ratio=sample_ratio,
+        eval_class_names=eval_classes,
+    )
+    common.save_json(os.path.join(out_dir, "comparison_report.json"), report)
+    md = ceval.comparison_report_to_markdown(report)
+    with open(os.path.join(out_dir, "comparison_report.md"), "w", encoding="utf-8") as f:
+        f.write(md)
+
+    # Confirm previews + optional cleanup
+    print("[INFO] === confirm_patch_samples ===")
+    common.copy_confirm_patch_samples(patch_run_dir, out_dir)
+    if cfg.get("cleanup_patch"):
+        patch_gen.cleanup_patch_generated(patch_run_dir, keep_manifest=True)
+        print(f"[INFO] cleaned patch large artifacts under {patch_run_dir}")
+
+    pipeline = {
+        "stage": "E2EDT",
+        "prep_dir": prep.get("prep_dir"),
+        "training_report_dir": run_dir,
+        "run_name": run_name,
+        "target_node": target_node,
+        "source_node": source_node,
+        "attack_class": attack_class,
+        "patch_run_dir": patch_run_dir,
+        "localization_run_dir": localization_run_dir,
+        "output_dir": out_dir,
+        "sample_ratio": sample_ratio,
+        "n_source_images": n_source_images,
+        "test_root": test_root,
+    }
+    common.save_json(os.path.join(out_dir, "e2edt_pipeline.json"), pipeline)
+    print(f"[INFO] E2EDT Stage2 done -> {out_dir}")
+    print(md)
+    return out_dir
 
 
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=(
-            "E2E transfer: patch_data_generate → specific_localization → "
-            "knowledgedistill, with interactive scheme/node/attack selection."
+            "Stage2 E2EDT: insert compact subnet → distill → "
+            "from-scratch + original-target comparison."
         )
     )
     p.add_argument(
         "--training_note_root",
         type=str,
         default=_DEFAULT_TRAINING_NOTE,
-        help="Root of training_report runs.",
+    )
+    p.add_argument(
+        "--prep_dir",
+        type=str,
+        default=None,
+        help="Stage1 source_prep directory containing source_prep_manifest.json.",
+    )
+    p.add_argument(
+        "--localization_run_dir",
+        type=str,
+        default=None,
+        help="Alternative to --prep_dir: existing localization_result run.",
     )
     p.add_argument(
         "--run_dir",
         type=str,
         default=None,
-        help="Specific training_report run (default: interactive / latest).",
+        help="training_report run (required if not using prep_dir).",
     )
     p.add_argument("--target_node", type=str, default=None)
-    p.add_argument("--source_node", type=str, default=None)
-    p.add_argument(
-        "--attack_class",
-        type=str,
-        default=None,
-        help="Source attack class (logical name or NN_name folder).",
-    )
     p.add_argument("--device", type=str, default=None)
     p.add_argument(
         "--output_root",
         type=str,
         default=_DEFAULT_DISTILL_ROOT,
-        help="Root for distill_result/ (E2EDT naming).",
     )
-    p.add_argument("--patch_config", type=str, default=None)
-    p.add_argument("--localization_config", type=str, default=None)
     p.add_argument("--distill_config", type=str, default=None)
+    p.add_argument("--epochs", type=int, default=None, help="Distill epochs.")
+    p.add_argument("--distill_lr", type=float, default=None)
+    p.add_argument("--batch_size", type=int, default=None)
+    p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--scratch_epochs", type=int, default=50)
+    p.add_argument("--scratch_batch_size", type=int, default=8)
+    p.add_argument("--scratch_lr", type=float, default=1e-4)
+    p.add_argument("--eval_batch_size", type=int, default=32)
     p.add_argument(
-        "--patch_output_root",
-        type=str,
-        default=None,
-        help="Override patch_generated root.",
+        "--cleanup_patch",
+        action="store_true",
+        help="After Stage2, cleanup patch_generated large files (keep manifests).",
     )
     return p
 
@@ -513,18 +394,24 @@ def main() -> None:
     args = build_argparser().parse_args()
     cfg = {
         "training_note_root": args.training_note_root,
+        "prep_dir": args.prep_dir,
+        "localization_run_dir": args.localization_run_dir,
         "run_dir": args.run_dir,
         "target_node": args.target_node,
-        "source_node": args.source_node,
-        "attack_class": args.attack_class,
         "device": args.device,
         "output_root": args.output_root,
-        "patch_config": args.patch_config,
-        "localization_config": args.localization_config,
         "distill_config": args.distill_config,
-        "patch_output_root": args.patch_output_root,
+        "epochs": args.epochs,
+        "distill_lr": args.distill_lr,
+        "batch_size": args.batch_size,
+        "seed": args.seed,
+        "scratch_epochs": args.scratch_epochs,
+        "scratch_batch_size": args.scratch_batch_size,
+        "scratch_lr": args.scratch_lr,
+        "eval_batch_size": args.eval_batch_size,
+        "cleanup_patch": bool(args.cleanup_patch),
     }
-    run_e2edt(cfg)
+    run_e2edt_stage2(cfg)
 
 
 if __name__ == "__main__":

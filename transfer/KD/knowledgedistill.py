@@ -872,11 +872,16 @@ def train_distill(
     clean_idx_student: Optional[int],
     clean_idx_src: Optional[int],
     device: torch.device,
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    import time as _time
+
     opt = torch.optim.Adam(list(student.trainable_parameters()), lr=float(cfg["lr"]))
     mode = cfg["new_class_distill"]
     history: List[Dict[str, Any]] = []
     teacher.eval()
+    n_steps = 0
+    epoch_times: List[float] = []
+    t_all0 = _time.time()
 
     for epoch in range(int(cfg["epochs"])):
         student.train()
@@ -888,6 +893,7 @@ def train_distill(
         sum_tot = sum_old = sum_new = 0.0
         sum_old_abs = 0.0
         n = 0
+        t0 = _time.time()
         for x, g_logits, _iid, _mid in loader:
             x = x.to(device)
             g_logits = g_logits.to(device)
@@ -919,22 +925,34 @@ def train_distill(
                     (s_logits[:, : student.n_old] - t_old).abs().mean().item()
                 ) * bs
             n += bs
+            n_steps += 1
 
+        epoch_time = _time.time() - t0
+        epoch_times.append(epoch_time)
         row = {
             "epoch": epoch,
             "loss": sum_tot / max(n, 1),
             "loss_old": sum_old / max(n, 1),
             "loss_new": sum_new / max(n, 1),
             "old_logit_mean_abs_vs_teacher": sum_old_abs / max(n, 1),
+            "epoch_time_sec": epoch_time,
         }
         history.append(row)
         print(
             f"[distill] epoch {epoch + 1}/{cfg['epochs']} "
             f"loss={row['loss']:.6f} old={row['loss_old']:.6f} "
             f"new={row['loss_new']:.6f} "
-            f"|Δold|={row['old_logit_mean_abs_vs_teacher']:.6f}"
+            f"|Δold|={row['old_logit_mean_abs_vs_teacher']:.6f} "
+            f"time={epoch_time:.2f}s"
         )
-    return history
+    stats = {
+        "wall_clock_sec": _time.time() - t_all0,
+        "n_train_steps": n_steps,
+        "epoch_times_sec": epoch_times,
+        "epochs": int(cfg["epochs"]),
+        "batch_size": int(cfg.get("batch_size", 16)),
+    }
+    return history, stats
 
 
 # ---------------------------------------------------------------------------
@@ -1344,7 +1362,7 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         f"mean_abs={sanity['mean_abs_diff']:.6g}"
     )
 
-    history = train_distill(
+    history, train_stats = train_distill(
         student,
         teacher,
         distill_loader,
@@ -1355,6 +1373,7 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         device=device,
     )
     _write_csv(os.path.join(out_dir, "train_history.csv"), history)
+    save_json(os.path.join(out_dir, "distill_train_stats.json"), train_stats)
 
     # Save student (trainable + structure meta)
     torch.save(
@@ -1378,43 +1397,46 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         os.path.join(out_dir, "student_state_dict.pt"),
     )
 
-    # Temporary eval data → metrics → cleanup
-    eval_gen_root = os.path.join(out_dir, "eval_generated")
     metrics: Dict[str, Any] = {}
-    try:
-        print("[INFO] generating temporary eval dataset (old+new classes)...")
-        test_root = generate_eval_dataset(
-            dataset_root=target_info["dataset_root"],
-            target_node=target_info["target_node"],
-            eval_classes=eval_classes,
-            output_root=eval_gen_root,
-            trigger_dir=target_info["trigger_dir"],
-            blended_alpha_square=target_info["blended_alpha_square"],
-            blended_alpha_hello_kitty=target_info["blended_alpha_hello_kitty"],
-            extracted_layer=extracted,
-            seed=int(cfg.get("eval_seed", 0)),
-        )
-        print(f"[INFO] eval test_root={test_root}")
-        metrics = evaluate_distill(
-            student,
-            teacher,
-            test_root=test_root,
-            eval_class_names=eval_classes,
-            device=device,
-            batch_size=int(cfg.get("eval_batch_size", 32)),
-        )
-        save_json(os.path.join(out_dir, "metrics.json"), metrics)
-        print(
-            "[INFO] metrics: "
-            f"new_recall={metrics['new_class_performance'].get('recall')} "
-            f"old_student_acc={metrics['old_class_retention'].get('student_oldspace_accuracy')} "
-            f"detach_ok={metrics['detach_recovery'].get('ok')} "
-            f"macro_f1={metrics['overall'].get('macro_f1')} "
-            f"auroc={metrics['overall'].get('auroc')}"
-        )
-    finally:
-        print(f"[INFO] cleaning temporary eval data under {eval_gen_root}")
-        _safe_rmtree(eval_gen_root)
+    if not bool(cfg.get("skip_eval", False)):
+        # Temporary eval data → metrics → cleanup
+        eval_gen_root = os.path.join(out_dir, "eval_generated")
+        try:
+            print("[INFO] generating temporary eval dataset (old+new classes)...")
+            test_root = generate_eval_dataset(
+                dataset_root=target_info["dataset_root"],
+                target_node=target_info["target_node"],
+                eval_classes=eval_classes,
+                output_root=eval_gen_root,
+                trigger_dir=target_info["trigger_dir"],
+                blended_alpha_square=target_info["blended_alpha_square"],
+                blended_alpha_hello_kitty=target_info["blended_alpha_hello_kitty"],
+                extracted_layer=extracted,
+                seed=int(cfg.get("eval_seed", 0)),
+            )
+            print(f"[INFO] eval test_root={test_root}")
+            metrics = evaluate_distill(
+                student,
+                teacher,
+                test_root=test_root,
+                eval_class_names=eval_classes,
+                device=device,
+                batch_size=int(cfg.get("eval_batch_size", 32)),
+            )
+            save_json(os.path.join(out_dir, "metrics.json"), metrics)
+            print(
+                "[INFO] metrics: "
+                f"new_recall={metrics['new_class_performance'].get('recall')} "
+                f"old_student_acc={metrics['old_class_retention'].get('student_oldspace_accuracy')} "
+                f"detach_ok={metrics['detach_recovery'].get('ok')} "
+                f"macro_f1={metrics['overall'].get('macro_f1')} "
+                f"auroc={metrics['overall'].get('auroc')}"
+            )
+        finally:
+            print(f"[INFO] cleaning temporary eval data under {eval_gen_root}")
+            _safe_rmtree(eval_gen_root)
+    else:
+        print("[INFO] skip_eval=True; Stage2 will run unified comparison eval")
 
     print(f"[INFO] distill done -> {out_dir}")
     return out_dir

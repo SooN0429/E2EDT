@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""Unified per-class metrics + E2EDT vs scratch / vs original-target comparison."""
+
+from __future__ import annotations
+
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from sklearn.metrics import f1_score
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+IMAGENET_TRANSFORM = transforms.Compose(
+    [
+        transforms.Resize([224, 224]),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
+
+
+def _per_class_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    class_names: Sequence[str],
+) -> Dict[str, Dict[str, float]]:
+    out: Dict[str, Dict[str, float]] = {}
+    labels = list(range(len(class_names)))
+    f1s = f1_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
+    for i, name in enumerate(class_names):
+        mask = y_true == i
+        n = int(mask.sum())
+        if n == 0:
+            rec = 0.0
+            acc = 0.0
+        else:
+            rec = float((y_pred[mask] == i).mean())
+            acc = rec  # one-vs-rest recall on true class samples == class accuracy
+        out[name] = {
+            "f1": float(f1s[i]),
+            "recall": rec,
+            "acc": acc,
+            "n": n,
+        }
+    return out
+
+
+def _macro_from_per_class(
+    per_class: Dict[str, Dict[str, float]], names: Sequence[str]
+) -> Dict[str, float]:
+    if not names:
+        return {"f1": 0.0, "recall": 0.0, "acc": 0.0}
+    return {
+        "f1": float(np.mean([per_class[n]["f1"] for n in names])),
+        "recall": float(np.mean([per_class[n]["recall"] for n in names])),
+        "acc": float(np.mean([per_class[n]["acc"] for n in names])),
+    }
+
+
+@torch.no_grad()
+def evaluate_predict_fn(
+    predict_fn: Callable[[torch.Tensor], torch.Tensor],
+    test_root: str,
+    eval_class_names: Sequence[str],
+    device: torch.device,
+    batch_size: int = 32,
+    n_logits: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Evaluate a logits predict_fn on ImageFolder test.
+
+    If the model outputs fewer logits than len(eval_class_names) (original target),
+    new-class predictions are treated as impossible (never correct).
+    """
+    import node_traindata_generate as ntdg
+
+    n_all = len(eval_class_names)
+    n_old = n_all - 1 if n_all >= 1 else 0
+    ds = datasets.ImageFolder(root=test_root, transform=IMAGENET_TRANSFORM)
+    folder_names = [n for n, _ in sorted(ds.class_to_idx.items(), key=lambda kv: kv[1])]
+    expected = [ntdg.class_folder_name(i, c) for i, c in enumerate(eval_class_names)]
+    if folder_names != expected:
+        name_to_eval = {
+            ntdg.class_folder_name(i, c): i for i, c in enumerate(eval_class_names)
+        }
+        remap = {
+            ds.class_to_idx[fname]: name_to_eval[fname]
+            for fname in folder_names
+            if fname in name_to_eval
+        }
+    else:
+        remap = {i: i for i in range(n_all)}
+
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=0)
+    y_true_list: List[np.ndarray] = []
+    y_pred_list: List[np.ndarray] = []
+
+    for x, y_raw in loader:
+        y = np.asarray([remap[int(v)] for v in y_raw.tolist()], dtype=np.int64)
+        x = x.to(device)
+        logits = predict_fn(x)
+        if not torch.is_tensor(logits):
+            raise TypeError("predict_fn must return a torch.Tensor of logits")
+        n_out = logits.shape[-1]
+        if n_logits is not None and n_out != n_logits:
+            # still use actual n_out
+            pass
+        pred = logits.argmax(dim=-1).cpu().numpy()
+        # If model has only old-class logits, new-class GT can never match
+        # (pred in 0..n_old-1). Keep as-is.
+        y_true_list.append(y)
+        y_pred_list.append(pred)
+
+    y_true = np.concatenate(y_true_list)
+    y_pred = np.concatenate(y_pred_list)
+    per_class = _per_class_metrics(y_true, y_pred, eval_class_names)
+    old_names = list(eval_class_names[:n_old])
+    new_name = eval_class_names[n_old] if n_all > n_old else None
+    overall_acc = float((y_pred == y_true).mean()) if len(y_true) else 0.0
+    return {
+        "per_class": per_class,
+        "old_macro": _macro_from_per_class(per_class, old_names),
+        "new_class": per_class.get(new_name) if new_name else None,
+        "new_class_name": new_name,
+        "overall_acc": overall_acc,
+        "macro_f1": float(
+            f1_score(
+                y_true,
+                y_pred,
+                labels=list(range(n_all)),
+                average="macro",
+                zero_division=0,
+            )
+        ),
+        "n_samples": int(len(y_true)),
+        "eval_class_names": list(eval_class_names),
+        "n_model_logits": int(n_out) if len(y_pred_list) else None,
+    }
+
+
+def _delta_per_class(
+    after: Dict[str, Dict[str, float]],
+    before: Dict[str, Dict[str, float]],
+    names: Sequence[str],
+) -> Dict[str, Dict[str, float]]:
+    out: Dict[str, Dict[str, float]] = {}
+    for name in names:
+        a = after.get(name, {"f1": 0.0, "recall": 0.0, "acc": 0.0})
+        b = before.get(name, {"f1": 0.0, "recall": 0.0, "acc": 0.0})
+        out[name] = {
+            "f1": float(a["f1"] - b["f1"]),
+            "recall": float(a["recall"] - b["recall"]),
+            "acc": float(a["acc"] - b["acc"]),
+        }
+    return out
+
+
+def build_comparison_report(
+    *,
+    e2edt_metrics: Dict[str, Any],
+    scratch_metrics: Dict[str, Any],
+    original_metrics: Dict[str, Any],
+    distill_resources: Dict[str, Any],
+    scratch_resources: Dict[str, Any],
+    n_source_images: int,
+    sample_ratio: Any,
+    eval_class_names: Sequence[str],
+) -> Dict[str, Any]:
+    n_old = len(eval_class_names) - 1
+    old_names = list(eval_class_names[:n_old])
+    new_name = eval_class_names[n_old]
+
+    # Original target has no new class → before new metrics are zeros
+    before_new = {"f1": 0.0, "recall": 0.0, "acc": 0.0, "n": 0}
+    after_new = e2edt_metrics.get("new_class") or before_new
+
+    vs_original = {
+        "old_class_delta": _delta_per_class(
+            e2edt_metrics["per_class"],
+            original_metrics["per_class"],
+            old_names,
+        ),
+        "old_macro_delta": {
+            "f1": float(
+                e2edt_metrics["old_macro"]["f1"] - original_metrics["old_macro"]["f1"]
+            ),
+            "recall": float(
+                e2edt_metrics["old_macro"]["recall"]
+                - original_metrics["old_macro"]["recall"]
+            ),
+            "acc": float(
+                e2edt_metrics["old_macro"]["acc"] - original_metrics["old_macro"]["acc"]
+            ),
+        },
+        "new_class_gain": {
+            "f1": float(after_new["f1"] - before_new["f1"]),
+            "recall": float(after_new["recall"] - before_new["recall"]),
+            "acc": float(after_new["acc"] - before_new["acc"]),
+            "note": "original target has no new-class logit; before=0",
+        },
+        "new_class_name": new_name,
+    }
+
+    scratch_labels = (scratch_resources.get("label_data") or {}).get("total")
+    label_compare = {
+        "e2edt_n_source_images": int(n_source_images),
+        "e2edt_sample_ratio": sample_ratio,
+        "e2edt_note": (
+            "Count is original images selected by SAMPLE_RATIO; "
+            "patch/mask tensors are treated as augmentation and excluded."
+        ),
+        "scratch_n_train_images": scratch_labels,
+        "scratch_per_class": (scratch_resources.get("label_data") or {}).get("per_class"),
+        "difference_scratch_minus_e2edt": (
+            None
+            if scratch_labels is None
+            else int(scratch_labels) - int(n_source_images)
+        ),
+        "ratio_e2edt_over_scratch": (
+            None
+            if not scratch_labels
+            else float(n_source_images) / float(scratch_labels)
+        ),
+    }
+
+    def _sec(res: Dict[str, Any]) -> Optional[float]:
+        v = res.get("wall_clock_sec")
+        return float(v) if v is not None else None
+
+    d_sec = _sec(distill_resources)
+    s_sec = _sec(scratch_resources)
+    time_compare = {
+        "distill_wall_clock_sec": d_sec,
+        "scratch_wall_clock_sec": s_sec,
+        "difference_scratch_minus_distill_sec": (
+            None if d_sec is None or s_sec is None else s_sec - d_sec
+        ),
+        "ratio_distill_over_scratch": (
+            None if not s_sec or d_sec is None else d_sec / s_sec
+        ),
+    }
+
+    d_flops = (distill_resources.get("flops") or {}).get("total_train_flops")
+    s_flops = (scratch_resources.get("flops") or {}).get("total_train_flops")
+    flops_compare = {
+        "distill_total_train_flops": d_flops,
+        "scratch_total_train_flops": s_flops,
+        "difference_scratch_minus_distill": (
+            None if d_flops is None or s_flops is None else float(s_flops) - float(d_flops)
+        ),
+        "distill_detail": distill_resources.get("flops"),
+        "scratch_detail": scratch_resources.get("flops"),
+    }
+
+    vs_scratch_perf = {
+        "e2edt_per_class": e2edt_metrics["per_class"],
+        "scratch_per_class": scratch_metrics["per_class"],
+        "delta_e2edt_minus_scratch": _delta_per_class(
+            e2edt_metrics["per_class"],
+            scratch_metrics["per_class"],
+            list(eval_class_names),
+        ),
+        "e2edt_old_macro": e2edt_metrics["old_macro"],
+        "scratch_old_macro": scratch_metrics["old_macro"],
+        "e2edt_new_class": e2edt_metrics.get("new_class"),
+        "scratch_new_class": scratch_metrics.get("new_class"),
+    }
+
+    return {
+        "eval_class_names": list(eval_class_names),
+        "models": {
+            "e2edt": e2edt_metrics,
+            "scratch": scratch_metrics,
+            "original_target": original_metrics,
+        },
+        "time": time_compare,
+        "label_data": label_compare,
+        "flops": flops_compare,
+        "vs_scratch_performance": vs_scratch_perf,
+        "vs_original_target": vs_original,
+    }
+
+
+def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
+    lines: List[str] = ["# E2EDT comparison report", ""]
+    names = report.get("eval_class_names") or []
+    lines.append("## Resource comparison (E2EDT distill vs from-scratch)")
+    t = report["time"]
+    lines.append(
+        f"- Wall-clock: distill={t.get('distill_wall_clock_sec'):.2f}s, "
+        f"scratch={t.get('scratch_wall_clock_sec'):.2f}s"
+        if t.get("distill_wall_clock_sec") is not None
+        and t.get("scratch_wall_clock_sec") is not None
+        else f"- Wall-clock: {t}"
+    )
+    ld = report["label_data"]
+    lines.append(
+        f"- Label data: E2EDT sample_ratio images={ld.get('e2edt_n_source_images')} "
+        f"(ratio={ld.get('e2edt_sample_ratio')}); "
+        f"scratch train images={ld.get('scratch_n_train_images')}; "
+        f"diff(scratch-e2edt)={ld.get('difference_scratch_minus_e2edt')}"
+    )
+    fl = report["flops"]
+    lines.append(
+        f"- Train FLOPs: distill={fl.get('distill_total_train_flops')}, "
+        f"scratch={fl.get('scratch_total_train_flops')}"
+    )
+    lines.append("")
+    lines.append("## Per-class performance (F1 / recall / acc)")
+    lines.append("| class | E2EDT F1 | scratch F1 | original F1 | Δold (E2EDT-orig) F1 |")
+    lines.append("|---|---:|---:|---:|---:|")
+    e = report["models"]["e2edt"]["per_class"]
+    s = report["models"]["scratch"]["per_class"]
+    o = report["models"]["original_target"]["per_class"]
+    deltas = report["vs_original_target"]["old_class_delta"]
+    new_gain = report["vs_original_target"]["new_class_gain"]
+    new_name = report["vs_original_target"]["new_class_name"]
+    for name in names:
+        dlt = deltas.get(name, {}).get("f1") if name in deltas else (
+            new_gain.get("f1") if name == new_name else None
+        )
+        lines.append(
+            f"| {name} | {e[name]['f1']:.4f} | {s[name]['f1']:.4f} | "
+            f"{o[name]['f1']:.4f} | "
+            f"{'' if dlt is None else f'{dlt:.4f}'} |"
+        )
+    lines.append("")
+    om = report["vs_original_target"]["old_macro_delta"]
+    lines.append(
+        f"- Old macro Δ (E2EDT − original): "
+        f"F1={om['f1']:.4f}, recall={om['recall']:.4f}, acc={om['acc']:.4f}"
+    )
+    lines.append(
+        f"- New class gain vs original (before=0): "
+        f"F1={new_gain['f1']:.4f}, recall={new_gain['recall']:.4f}, "
+        f"acc={new_gain['acc']:.4f}"
+    )
+    lines.append("")
+    return "\n".join(lines)

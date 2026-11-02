@@ -49,6 +49,7 @@ scikit-learn==1.7.2
 scipy==1.15.3
 six==1.17.0
 sympy==1.14.0
+thop>=0.1.1
 threadpoolctl==3.7.0
 torch==2.14.1
 torchinfo==1.8.0
