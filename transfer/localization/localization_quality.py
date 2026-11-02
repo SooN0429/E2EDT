@@ -2,17 +2,26 @@
 """Validate localization quality for a localization_result run.
 
 Surrogate section (per-image):
-  - Weighted Test MSE on hold-out masks (mask_seed=0 by default)
-  - R^2 on the same test masks (target-class logit)
-  - Source Response Variance on the original fitting masks
+  - Weighted Test MSE / R^2 on hold-out masks (attack, clean, attack-clean margin)
+  - Bootstrap CI for mean/median; absolute_level vs comparative blocks
+  - Source Response Variance on fitting masks (valid only if MASK_SEED consistent)
 
 Subnet section (when hard_masks.pt exists):
-  - E_loc / E_src on hold-out patch masks (hard-masked full Ms)
-  - Target retention on node test ImageFolder: original vs learned vs random×N
-    (Target F1 / Recall / AUROC, Clean FPR)
+  - E_loc / E_src on hold-out patch masks
+  - Primary: logit margin retention, FPR@TPR=95%, necessity ablate, keep-ratio curve
+  - Linear probe (target vs clean) on subnet features
+  - Reference: argmax F1/cleanFPR retention (may saturate)
+
+Compare mode:
+  --compare_localization_dirs dir1,dir2,...  → soft Spearman + hard Jaccard;
+  paired R^2 diffs when per-image CSVs exist.
 
 Masked patch inputs are rebuilt in memory from retained patch metadata;
 tensors/ need not exist after sweep cleanup.
+
+Examples:
+  python localization_quality.py --localization_dir /path/to/loc --device cuda:0
+  python localization_quality.py --compare_localization_dirs d1,d2,d3
 """
 
 from __future__ import annotations
@@ -346,6 +355,209 @@ def _nanpercentile(vals: Sequence[float], q: float) -> float:
     return float(np.percentile(arr, q))
 
 
+def sha256_file(path: str) -> Optional[str]:
+    if not path or not os.path.isfile(path):
+        return None
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def bootstrap_mean_median_ci(
+    vals: Sequence[float],
+    n_boot: int = 1000,
+    seed: int = 0,
+    alpha: float = 0.05,
+) -> Dict[str, Any]:
+    """Bootstrap CI for mean/median of a 1-d metric vector (nan-aware)."""
+    arr = np.asarray(list(vals), dtype=np.float64)
+    arr = arr[np.isfinite(arr)]
+    out: Dict[str, Any] = {
+        "se_mean": float("nan"),
+        "mean_ci95": [float("nan"), float("nan")],
+        "median_ci95": [float("nan"), float("nan")],
+        "n_boot": int(n_boot),
+        "n_effective": int(arr.size),
+    }
+    if arr.size == 0:
+        return out
+    if arr.size == 1:
+        v = float(arr[0])
+        out["se_mean"] = 0.0
+        out["mean_ci95"] = [v, v]
+        out["median_ci95"] = [v, v]
+        return out
+    rng = np.random.default_rng(int(seed))
+    means = np.empty(int(n_boot), dtype=np.float64)
+    medians = np.empty(int(n_boot), dtype=np.float64)
+    n = arr.size
+    for i in range(int(n_boot)):
+        sample = rng.choice(arr, size=n, replace=True)
+        means[i] = float(np.mean(sample))
+        medians[i] = float(np.median(sample))
+    lo = 100.0 * (alpha / 2.0)
+    hi = 100.0 * (1.0 - alpha / 2.0)
+    out["se_mean"] = float(np.std(means, ddof=1))
+    out["mean_ci95"] = [
+        float(np.percentile(means, lo)),
+        float(np.percentile(means, hi)),
+    ]
+    out["median_ci95"] = [
+        float(np.percentile(medians, lo)),
+        float(np.percentile(medians, hi)),
+    ]
+    return out
+
+
+def aggregate_metric_block(
+    vals: Sequence[float],
+    n_boot: int = 1000,
+    boot_seed: int = 0,
+) -> Dict[str, Any]:
+    block = {
+        "mean": _nanmean(vals),
+        "median": _nanmedian(vals),
+        "p10": _nanpercentile(vals, 10),
+        "p90": _nanpercentile(vals, 90),
+        "n_nan": int(sum(1 for v in vals if not np.isfinite(v))),
+    }
+    block.update(bootstrap_mean_median_ci(vals, n_boot=n_boot, seed=boot_seed))
+    return block
+
+
+def logit_margin(logits: np.ndarray, target_idx: int) -> np.ndarray:
+    """Per-row margin: z_target - max_{c!=target} z_c."""
+    z = np.asarray(logits, dtype=np.float64)
+    if z.ndim == 1:
+        z = z.reshape(1, -1)
+    n, c = z.shape
+    if not (0 <= int(target_idx) < c):
+        raise ValueError(f"target_idx={target_idx} out of range for C={c}")
+    t = z[:, int(target_idx)]
+    mask = np.ones(c, dtype=bool)
+    mask[int(target_idx)] = False
+    other = np.max(z[:, mask], axis=1)
+    return t - other
+
+
+def fpr_at_tpr(
+    scores: np.ndarray,
+    y_true_bin: np.ndarray,
+    target_tpr: float = 0.95,
+) -> float:
+    """FPR at the lowest threshold achieving TPR >= target_tpr (higher score = more positive)."""
+    scores = np.asarray(scores, dtype=np.float64).reshape(-1)
+    y = np.asarray(y_true_bin, dtype=np.int64).reshape(-1)
+    pos = y == 1
+    neg = y == 0
+    n_pos = int(pos.sum())
+    n_neg = int(neg.sum())
+    if n_pos == 0 or n_neg == 0:
+        return float("nan")
+    # Sort thresholds from high to low
+    order = np.argsort(-scores)
+    y_s = y[order]
+    tp = 0
+    fp = 0
+    best_fpr = 1.0
+    for label in y_s:
+        if label == 1:
+            tp += 1
+        else:
+            fp += 1
+        tpr = tp / n_pos
+        if tpr >= float(target_tpr):
+            best_fpr = fp / n_neg
+            break
+    return float(best_fpr)
+
+
+def margin_retention_rate(
+    m_full: float,
+    m_sub: float,
+    m_rand: float,
+    eps: float = 1e-6,
+) -> float:
+    denom = float(m_full) - float(m_rand)
+    if abs(denom) < float(eps):
+        return float("nan")
+    return float((float(m_sub) - float(m_rand)) / denom)
+
+
+def complement_hard_masks(
+    hard: Dict[str, torch.Tensor],
+) -> Dict[str, torch.Tensor]:
+    """Invert 0/1 hard gates (ablate the kept subnet channels)."""
+    out: Dict[str, torch.Tensor] = {}
+    for k, v in hard.items():
+        t = v.detach().float().cpu()
+        out[k] = (1.0 - t).clamp(0.0, 1.0)
+    return out
+
+
+def random_ablate_hard_masks(
+    hard_template: Dict[str, torch.Tensor],
+    seed: int,
+) -> Dict[str, torch.Tensor]:
+    """Randomly ablate the same number of channels as learned keeps per key."""
+    rng = np.random.default_rng(int(seed))
+    out: Dict[str, torch.Tensor] = {}
+    for k, v in hard_template.items():
+        t = v.detach().float().cpu().reshape(-1)
+        n = int(t.numel())
+        k_keep = int((t > 0.5).sum().item())
+        # Ablate = turn off k_keep channels from a full-ones mask
+        full = torch.ones(n, dtype=torch.float32)
+        if k_keep > 0:
+            idx = rng.choice(n, size=min(k_keep, n), replace=False)
+            full[torch.as_tensor(idx, dtype=torch.long)] = 0.0
+        out[k] = full
+    return out
+
+
+def hard_jaccard(a: torch.Tensor, b: torch.Tensor) -> float:
+    aa = a.detach().float().cpu().reshape(-1) > 0.5
+    bb = b.detach().float().cpu().reshape(-1) > 0.5
+    inter = int((aa & bb).sum().item())
+    union = int((aa | bb).sum().item())
+    if union == 0:
+        return float("nan")
+    return float(inter / union)
+
+
+def soft_spearman(a: torch.Tensor, b: torch.Tensor) -> float:
+    from scipy.stats import spearmanr
+
+    aa = a.detach().float().cpu().numpy().reshape(-1)
+    bb = b.detach().float().cpu().numpy().reshape(-1)
+    if aa.size < 2:
+        return float("nan")
+    rho, _ = spearmanr(aa, bb)
+    return float(rho) if np.isfinite(rho) else float("nan")
+
+
+def trapezoid_auc(xs: Sequence[float], ys: Sequence[float]) -> float:
+    x = np.asarray(list(xs), dtype=np.float64)
+    y = np.asarray(list(ys), dtype=np.float64)
+    if x.size < 2:
+        return float("nan")
+    order = np.argsort(x)
+    xx, yy = x[order], y[order]
+    trapz = getattr(np, "trapezoid", None) or np.trapz
+    return float(trapz(yy, xx))
+
+
+def resolve_expected_mask_seed(loc_cfg: Dict[str, Any], patch_cfg: Dict[str, Any]) -> int:
+    for key in ("MASK_SEED", "train_mask_seed"):
+        if loc_cfg.get(key) is not None:
+            return int(loc_cfg[key])
+    return int(patch_cfg["MASK_SEED"])
+
+
 # ---------------------------------------------------------------------------
 # Main evaluation
 # ---------------------------------------------------------------------------
@@ -358,6 +570,8 @@ def evaluate_localization_surrogates(
     device_str: Optional[str] = None,
     batch_size: int = 32,
     r2_eps: float = R2_DENOM_EPS,
+    bootstrap_samples: int = 1000,
+    bootstrap_seed: int = 0,
 ) -> Dict[str, Any]:
     localization_dir = os.path.abspath(localization_dir)
     cfg_path = os.path.join(localization_dir, "config.json")
@@ -379,7 +593,18 @@ def evaluate_localization_surrogates(
     num_masks = int(patch_cfg["NUM_MASKS_PER_IMAGE"])
     image_size = int(patch_cfg.get("IMAGE_SIZE", 224))
     train_mask_seed = int(patch_cfg["MASK_SEED"])
+    loc_has_mask_seed = loc_cfg.get("MASK_SEED") is not None or (
+        loc_cfg.get("train_mask_seed") is not None
+    )
+    expected_mask_seed = resolve_expected_mask_seed(loc_cfg, patch_cfg)
+    if loc_has_mask_seed:
+        mask_seed_consistent = int(expected_mask_seed) == int(train_mask_seed)
+    else:
+        # Legacy loc configs did not snapshot MASK_SEED; cannot verify.
+        mask_seed_consistent = False
     include_reference = bool(loc_cfg.get("include_reference", True))
+    manifest_path = os.path.join(patch_dir, "manifest.jsonl")
+    patch_manifest_sha256 = sha256_file(manifest_path)
 
     attack_class = str(
         loc_cfg.get("resolved_attack_class") or selection["attack_class"]
@@ -389,6 +614,10 @@ def evaluate_localization_surrogates(
     if not class_names:
         class_names = list(training_report["node_specs"][node])
     target_idx = int(loc_cfg["resolved_target_class_idx"])
+    try:
+        clean_idx = clean_class_index(class_names)
+    except ValueError:
+        clean_idx = None
     extracted = str(
         loc_cfg.get("resolved_extracted_layer")
         or loc_cfg.get("extracted_layer")
@@ -519,6 +748,20 @@ def evaluate_localization_surrogates(
             or (float(np.sum((y_test_t - float(np.mean(y_test_t))) ** 2)) < r2_eps)
         )
 
+        r2_clean = float("nan")
+        mse_clean = float("nan")
+        r2_margin = float("nan")
+        mse_margin = float("nan")
+        if clean_idx is not None:
+            y_test_c = Y_test[:, clean_idx]
+            g_test_c = G_test[:, clean_idx]
+            r2_clean = r2_score(y_test_c, g_test_c, eps=r2_eps)
+            mse_clean = weighted_test_mse_target(y_test_c, g_test_c, pi_test)
+            y_m = y_test_t - y_test_c
+            g_m = g_test_t - g_test_c
+            r2_margin = r2_score(y_m, g_m, eps=r2_eps)
+            mse_margin = weighted_test_mse_target(y_m, g_m, pi_test)
+
         row = {
             "image_idx": idx,
             "image_id": image_id,
@@ -527,6 +770,10 @@ def evaluate_localization_surrogates(
             "test_mse_weighted": mse_t,
             "test_mse_weighted_multiclass": mse_mc,
             "r2": r2,
+            "r2_clean": r2_clean,
+            "test_mse_clean": mse_clean,
+            "r2_margin": r2_margin,
+            "test_mse_margin": mse_margin,
             "source_response_variance": v_i,
             "mask_overlap_frac": overlap,
             "low_informativeness": int(low_info),
@@ -534,8 +781,10 @@ def evaluate_localization_surrogates(
             "train_mask_seed": train_mask_seed,
             "test_mask_seed": int(test_mask_seed),
             "target_class_idx": target_idx,
+            "clean_class_idx": clean_idx if clean_idx is not None else -1,
             "include_reference_in_V": int(include_reference),
             "n_fit_mask_ids": len(fit_mask_ids),
+            "mask_seed_consistent": int(mask_seed_consistent),
         }
         per_image.append(row)
 
@@ -555,18 +804,103 @@ def evaluate_localization_surrogates(
     r2_vals = [r["r2"] for r in per_image]
     v_vals = [r["source_response_variance"] for r in per_image]
     overlap_vals = [r["mask_overlap_frac"] for r in per_image]
+    r2_clean_vals = [r["r2_clean"] for r in per_image]
+    mse_clean_vals = [r["test_mse_clean"] for r in per_image]
+    r2_margin_vals = [r["r2_margin"] for r in per_image]
+    mse_margin_vals = [r["test_mse_margin"] for r in per_image]
     n_low = int(sum(int(r["low_informativeness"]) for r in per_image))
+    n_boot = int(bootstrap_samples)
+
+    metrics = {
+        "test_mse_weighted": aggregate_metric_block(
+            mse_vals, n_boot=n_boot, boot_seed=bootstrap_seed
+        ),
+        "r2": aggregate_metric_block(
+            r2_vals, n_boot=n_boot, boot_seed=bootstrap_seed + 1
+        ),
+        "source_response_variance": {
+            "mean": _nanmean(v_vals),
+            "median": _nanmedian(v_vals),
+            "p10": _nanpercentile(v_vals, 10),
+            "p90": _nanpercentile(v_vals, 90),
+            "valid_for_ranking": bool(mask_seed_consistent),
+        },
+        "mask_overlap_frac": {
+            "mean": _nanmean(overlap_vals),
+            "median": _nanmedian(overlap_vals),
+            "p90": _nanpercentile(overlap_vals, 90),
+            "valid_for_ranking": bool(mask_seed_consistent),
+        },
+        "test_mse_weighted_multiclass": {
+            "mean": _nanmean(
+                [r["test_mse_weighted_multiclass"] for r in per_image]
+            ),
+            "median": _nanmedian(
+                [r["test_mse_weighted_multiclass"] for r in per_image]
+            ),
+        },
+        "r2_clean": aggregate_metric_block(
+            r2_clean_vals, n_boot=n_boot, boot_seed=bootstrap_seed + 2
+        ),
+        "test_mse_clean": aggregate_metric_block(
+            mse_clean_vals, n_boot=n_boot, boot_seed=bootstrap_seed + 3
+        ),
+        "r2_margin": aggregate_metric_block(
+            r2_margin_vals, n_boot=n_boot, boot_seed=bootstrap_seed + 4
+        ),
+        "test_mse_margin": aggregate_metric_block(
+            mse_margin_vals, n_boot=n_boot, boot_seed=bootstrap_seed + 5
+        ),
+    }
+
+    warnings: List[str] = []
+    if not is_holdout:
+        warnings.append(
+            "test_mask_seed equals train MASK_SEED; test set is not hold-out."
+        )
+    if _nanmean(overlap_vals) > 0.05:
+        warnings.append(
+            f"mean mask_overlap_frac={_nanmean(overlap_vals):.4f}; "
+            "high overlap can make Test MSE optimistic."
+        )
+    if n_low > 0:
+        warnings.append(
+            f"{n_low}/{len(per_image)} images flagged low_informativeness "
+            "(near-zero response variance or R^2 undefined)."
+        )
+    if not loc_has_mask_seed:
+        warnings.append(
+            "localization config.json has no MASK_SEED/train_mask_seed; "
+            "cannot verify patch fit masks match this run "
+            f"(patch MASK_SEED={train_mask_seed}). "
+            "SRV/mask_overlap marked invalid for ranking."
+        )
+    elif not mask_seed_consistent:
+        warnings.append(
+            f"mask_seed_consistent=False: loc expected MASK_SEED="
+            f"{expected_mask_seed} but patch config has {train_mask_seed}. "
+            "source_response_variance / mask_overlap_frac may not reflect "
+            "this localization run's original fit masks."
+        )
+    if clean_idx is None:
+        warnings.append(
+            "No 'clean' class; skipped r2_clean / r2_margin metrics."
+        )
 
     summary: Dict[str, Any] = {
         "localization_dir": localization_dir,
         "patch_run_dir": patch_dir,
+        "patch_manifest_sha256": patch_manifest_sha256,
         "checkpoint_path": ckpt,
         "node": node,
         "attack_class": attack_class,
         "target_class_idx": target_idx,
         "target_class_name": class_names[target_idx],
+        "clean_class_idx": clean_idx,
         "n_images": len(per_image),
         "train_mask_seed": train_mask_seed,
+        "expected_mask_seed": int(expected_mask_seed),
+        "mask_seed_consistent": bool(mask_seed_consistent),
         "test_mask_seed": int(test_mask_seed),
         "is_holdout": is_holdout,
         "include_reference_in_V": include_reference,
@@ -575,58 +909,30 @@ def evaluate_localization_surrogates(
         "keep_prob": keep_prob,
         "num_test_masks_per_image": num_masks,
         "r2_denom_eps": r2_eps,
+        "bootstrap_samples": n_boot,
         "n_low_informativeness": n_low,
-        "warnings": [],
-        "metrics": {
-            "test_mse_weighted": {
-                "mean": _nanmean(mse_vals),
-                "median": _nanmedian(mse_vals),
-                "p10": _nanpercentile(mse_vals, 10),
-                "p90": _nanpercentile(mse_vals, 90),
-            },
-            "r2": {
-                "mean": _nanmean(r2_vals),
-                "median": _nanmedian(r2_vals),
-                "p10": _nanpercentile(r2_vals, 10),
-                "p90": _nanpercentile(r2_vals, 90),
-                "n_nan": int(sum(1 for v in r2_vals if not np.isfinite(v))),
-            },
-            "source_response_variance": {
-                "mean": _nanmean(v_vals),
-                "median": _nanmedian(v_vals),
-                "p10": _nanpercentile(v_vals, 10),
-                "p90": _nanpercentile(v_vals, 90),
-            },
-            "mask_overlap_frac": {
-                "mean": _nanmean(overlap_vals),
-                "median": _nanmedian(overlap_vals),
-                "p90": _nanpercentile(overlap_vals, 90),
-            },
-            "test_mse_weighted_multiclass": {
-                "mean": _nanmean(
-                    [r["test_mse_weighted_multiclass"] for r in per_image]
-                ),
-                "median": _nanmedian(
-                    [r["test_mse_weighted_multiclass"] for r in per_image]
-                ),
-            },
+        "warnings": warnings,
+        "metrics": metrics,
+        "absolute_level": {
+            "r2": metrics["r2"],
+            "test_mse_weighted": metrics["test_mse_weighted"],
+            "r2_clean": metrics["r2_clean"],
+            "test_mse_clean": metrics["test_mse_clean"],
+            "r2_margin": metrics["r2_margin"],
+            "test_mse_margin": metrics["test_mse_margin"],
+            "source_response_variance": metrics["source_response_variance"],
+            "note": (
+                "Use absolute_level for single-run quality. "
+                "Do not rank MASK_SEED trials from one summary alone."
+            ),
         },
+        "comparative": None,
+        "comparative_note": (
+            "comparative is null for a single run; use "
+            "--compare_localization_dirs after per-image CSVs exist."
+        ),
         "per_image_csv": csv_path,
     }
-    if not is_holdout:
-        summary["warnings"].append(
-            "test_mask_seed equals train MASK_SEED; test set is not hold-out."
-        )
-    if _nanmean(overlap_vals) > 0.05:
-        summary["warnings"].append(
-            f"mean mask_overlap_frac={_nanmean(overlap_vals):.4f}; "
-            "high overlap can make Test MSE optimistic."
-        )
-    if n_low > 0:
-        summary["warnings"].append(
-            f"{n_low}/{len(per_image)} images flagged low_informativeness "
-            "(near-zero response variance or R^2 undefined)."
-        )
 
     summary_path = os.path.join(out_dir, "surrogate_quality_summary.json")
     with open(summary_path, "w", encoding="utf-8") as f:
@@ -636,13 +942,15 @@ def evaluate_localization_surrogates(
     print(f"[INFO] wrote {summary_path}")
     print(
         f"[SUMMARY] n={len(per_image)} "
-        f"mse_mean={summary['metrics']['test_mse_weighted']['mean']:.6f} "
-        f"r2_mean={summary['metrics']['r2']['mean']:.4f} "
-        f"V_mean={summary['metrics']['source_response_variance']['mean']:.6f} "
-        f"overlap_mean={summary['metrics']['mask_overlap_frac']['mean']:.4f} "
-        f"low_info={n_low} holdout={is_holdout}"
+        f"mse_mean={metrics['test_mse_weighted']['mean']:.6f} "
+        f"r2_mean={metrics['r2']['mean']:.4f} "
+        f"r2_margin_mean={metrics['r2_margin']['mean']:.4f} "
+        f"V_mean={metrics['source_response_variance']['mean']:.6f} "
+        f"overlap_mean={metrics['mask_overlap_frac']['mean']:.4f} "
+        f"low_info={n_low} holdout={is_holdout} "
+        f"mask_seed_ok={mask_seed_consistent}"
     )
-    for w in summary["warnings"]:
+    for w in warnings:
         print(f"[WARN] {w}")
 
     summary["summary_json"] = summary_path
@@ -727,6 +1035,139 @@ def clean_class_index(class_names: Sequence[str]) -> int:
         if str(name).lower() == "clean":
             return i
     raise ValueError(f"No 'clean' class in {list(class_names)}")
+
+
+@torch.no_grad()
+def collect_logits_loader(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return (y_true, logits [N,C])."""
+    ys, logits = [], []
+    for x, y in loader:
+        x = x.to(device)
+        out = model.predict(x, test_flag=1)
+        ys.append(y.numpy())
+        logits.append(out.detach().cpu().numpy())
+    return np.concatenate(ys, axis=0), np.concatenate(logits, axis=0)
+
+
+@torch.no_grad()
+def collect_features_loader(
+    model: MaskedResNet18Net,
+    loader: DataLoader,
+    device: torch.device,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Features from base_network (pre-classifier), shape [N, D]."""
+    ys, feats = [], []
+    for x, y in loader:
+        x = x.to(device)
+        model.base.eval()
+        f = model.base.base_network(x, test_flag=1)
+        ys.append(y.numpy())
+        feats.append(f.detach().cpu().numpy())
+    return np.concatenate(ys, axis=0), np.concatenate(feats, axis=0)
+
+
+def summarize_margins(
+    y_true: np.ndarray,
+    logits: np.ndarray,
+    target_idx: int,
+    clean_idx: int,
+) -> Dict[str, float]:
+    m = logit_margin(logits, target_idx)
+    y_true = np.asarray(y_true).reshape(-1)
+    mask_t = y_true == int(target_idx)
+    mask_c = y_true == int(clean_idx)
+    y_bin = (y_true == int(target_idx)).astype(np.int64)
+    return {
+        "margin_target_mean": float(m[mask_t].mean()) if mask_t.any() else float("nan"),
+        "margin_clean_mean": float(m[mask_c].mean()) if mask_c.any() else float("nan"),
+        "margin_all_mean": float(m.mean()) if m.size else float("nan"),
+        "fpr_at_tpr95": fpr_at_tpr(m, y_bin, target_tpr=0.95),
+        "n_target": int(mask_t.sum()),
+        "n_clean": int(mask_c.sum()),
+    }
+
+
+def run_linear_probe_target_clean(
+    feats: np.ndarray,
+    y_true: np.ndarray,
+    target_idx: int,
+    clean_idx: int,
+) -> Dict[str, Any]:
+    """L2 logistic regression on target vs clean features only."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import accuracy_score, roc_auc_score
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+
+    y_true = np.asarray(y_true).reshape(-1)
+    keep = (y_true == int(target_idx)) | (y_true == int(clean_idx))
+    if int(keep.sum()) < 8:
+        return {"ok": False, "error": "too few target/clean samples"}
+    X = np.asarray(feats, dtype=np.float64)[keep]
+    y = (y_true[keep] == int(target_idx)).astype(np.int64)
+    if y.min() == y.max():
+        return {"ok": False, "error": "single-class after filter"}
+    try:
+        Xtr, Xte, ytr, yte = train_test_split(
+            X, y, test_size=0.3, random_state=0, stratify=y
+        )
+    except ValueError:
+        Xtr, Xte, ytr, yte = train_test_split(
+            X, y, test_size=0.3, random_state=0
+        )
+    scaler = StandardScaler()
+    Xtr = scaler.fit_transform(Xtr)
+    Xte = scaler.transform(Xte)
+    clf = LogisticRegression(max_iter=2000, C=1.0)
+    clf.fit(Xtr, ytr)
+    pred = clf.predict(Xte)
+    proba = clf.predict_proba(Xte)[:, 1]
+    out: Dict[str, Any] = {
+        "ok": True,
+        "accuracy": float(accuracy_score(yte, pred)),
+        "n_train": int(len(ytr)),
+        "n_test": int(len(yte)),
+    }
+    try:
+        out["auroc"] = float(roc_auc_score(yte, proba))
+    except ValueError:
+        out["auroc"] = None
+    return out
+
+
+def soft_to_hard_at_ratio(
+    soft: Dict[str, torch.Tensor],
+    block_meta: Sequence[Dict[str, Any]],
+    masks_cfg: Dict[str, Any],
+    keep_ratio: float,
+) -> Dict[str, torch.Tensor]:
+    cfg = {
+        "enable": dict(masks_cfg.get("enable") or {"M_H": True, "M_O": True}),
+        "keep_ratio": {"M_H": float(keep_ratio), "M_O": float(keep_ratio)},
+        "top_k": masks_cfg.get("top_k") or {"M_H": None, "M_O": None},
+    }
+    hard, _ = soft_to_hard_masks(
+        soft,
+        keep_ratio=keep_ratio_map_for_keys(list(soft.keys()), cfg),
+        top_k_cfg=top_k_map_for_keys(list(soft.keys()), cfg),
+        block_meta=block_meta,
+    )
+    return hard
+
+
+def load_soft_masks_blob(path: str) -> Dict[str, torch.Tensor]:
+    blob = torch.load(path, map_location="cpu")
+    if isinstance(blob, dict) and "soft" in blob:
+        soft = blob["soft"]
+    elif isinstance(blob, dict):
+        soft = blob
+    else:
+        raise TypeError(f"Unexpected soft_masks format in {path}")
+    return {k: v.float().cpu() for k, v in soft.items()}
 
 
 def compute_retention_metrics(
@@ -991,10 +1432,15 @@ def evaluate_subnet_quality(
     batch_size: int = 32,
     random_seeds: int = DEFAULT_RANDOM_SEEDS,
     random_base_seed: int = DEFAULT_RANDOM_BASE_SEED,
+    keep_ratios: Optional[Sequence[float]] = None,
+    skip_necessity: bool = False,
+    skip_keep_ratio_curve: bool = False,
+    skip_linear_probe: bool = False,
 ) -> Dict[str, Any]:
     localization_dir = os.path.abspath(localization_dir)
     cfg_path = os.path.join(localization_dir, "config.json")
     hard_path = os.path.join(localization_dir, "hard_masks.pt")
+    soft_path = os.path.join(localization_dir, "soft_masks.pt")
     if not os.path.isfile(cfg_path):
         raise FileNotFoundError(cfg_path)
     if not os.path.isfile(hard_path):
@@ -1008,8 +1454,20 @@ def evaluate_subnet_quality(
         loc_cfg.get("patch_run_dir"), override=patch_run_dir
     )
     patch_resolved = load_json(os.path.join(patch_dir, "config_resolved.json"))
+    patch_cfg = patch_resolved["patch_config"]
     training_report = patch_resolved["training_report"]
     selection = patch_resolved["selection"]
+    train_mask_seed = int(patch_cfg["MASK_SEED"])
+    loc_has_mask_seed = loc_cfg.get("MASK_SEED") is not None or (
+        loc_cfg.get("train_mask_seed") is not None
+    )
+    expected_mask_seed = resolve_expected_mask_seed(loc_cfg, patch_cfg)
+    if loc_has_mask_seed:
+        mask_seed_consistent = int(expected_mask_seed) == int(train_mask_seed)
+    else:
+        mask_seed_consistent = False
+    manifest_path = os.path.join(patch_dir, "manifest.jsonl")
+    patch_manifest_sha256 = sha256_file(manifest_path)
 
     node = str(loc_cfg.get("resolved_node") or selection["node"])
     attack_class = str(
@@ -1038,6 +1496,8 @@ def evaluate_subnet_quality(
         "M_H": bool(masks_cfg.get("enable", {}).get("M_H", True)),
         "M_O": bool(masks_cfg.get("enable", {}).get("M_O", True)),
     }
+    if keep_ratios is None:
+        keep_ratios = [0.02, 0.05, 0.1, 0.25]
 
     device_name = device_str or loc_cfg.get("device") or "cpu"
     if str(device_name).startswith("cuda") and not torch.cuda.is_available():
@@ -1090,18 +1550,21 @@ def evaluate_subnet_quality(
         f"E_src={func_loc['E_src']:.6f}"
     )
 
-    # ---- B. Target retention on node test ----
-    # Probe block_meta from a temporary masked wrapper (for random masks)
     probe = build_masked_ms(
         len(class_names), ckpt, extracted, enable, device, hard=None
     )
     block_meta = probe.block_meta
     del probe
 
-    work_root = tempfile.mkdtemp(
-        prefix="subnet_eval_", dir=out_dir
-    )
+    work_root = tempfile.mkdtemp(prefix="subnet_eval_", dir=out_dir)
     retention: Dict[str, Any] = {}
+    margin_block: Dict[str, Any] = {}
+    necessity_block: Optional[Dict[str, Any]] = None
+    keep_ratio_block: Optional[Dict[str, Any]] = None
+    linear_probe_block: Optional[Dict[str, Any]] = None
+    warnings: List[str] = []
+    ret_rate = float("nan")
+
     try:
         print(f"[INFO] generating node test data under {work_root}")
         loader, _ = generate_node_test_loader(
@@ -1114,70 +1577,303 @@ def evaluate_subnet_quality(
         )
         print(f"[INFO] node test n={len(loader.dataset)}")
 
-        # Original Ms
+        # Original Ms — logits for margin + reference argmax
         ms_orig = load_source_model(len(class_names), ckpt, extracted, device)
-        y_t, y_p, probs = predict_loader(ms_orig, loader, device)
+        y_true, logits_full = collect_logits_loader(ms_orig, loader, device)
+        y_pred_full = logits_full.argmax(axis=1)
+        probs_full = np.exp(logits_full - logits_full.max(axis=1, keepdims=True))
+        probs_full = probs_full / probs_full.sum(axis=1, keepdims=True)
         retention["original"] = compute_retention_metrics(
-            y_t, y_p, probs, target_idx, clean_idx, class_names
+            y_true, y_pred_full, probs_full, target_idx, clean_idx, class_names
         )
-        print(
-            f"[retention] original "
-            f"F1={retention['original']['target_f1']:.4f} "
-            f"R={retention['original']['target_recall']:.4f} "
-            f"AUROC={retention['original']['target_auroc']} "
-            f"cleanFPR={retention['original']['clean_fpr']:.4f}"
-        )
+        margin_full = summarize_margins(y_true, logits_full, target_idx, clean_idx)
         del ms_orig
 
-        # Learned hard mask
+        # Learned
         ms_learned = build_masked_ms(
-            len(class_names),
-            ckpt,
-            extracted,
-            enable,
-            device,
-            hard=hard_learned,
+            len(class_names), ckpt, extracted, enable, device, hard=hard_learned
         )
-        y_t, y_p, probs = predict_loader(ms_learned, loader, device)
+        y_true, logits_learned = collect_logits_loader(ms_learned, loader, device)
+        y_pred_l = logits_learned.argmax(axis=1)
+        probs_l = np.exp(logits_learned - logits_learned.max(axis=1, keepdims=True))
+        probs_l = probs_l / probs_l.sum(axis=1, keepdims=True)
         retention["learned"] = compute_retention_metrics(
-            y_t, y_p, probs, target_idx, clean_idx, class_names
+            y_true, y_pred_l, probs_l, target_idx, clean_idx, class_names
         )
-        print(
-            f"[retention] learned "
-            f"F1={retention['learned']['target_f1']:.4f} "
-            f"R={retention['learned']['target_recall']:.4f} "
-            f"AUROC={retention['learned']['target_auroc']} "
-            f"cleanFPR={retention['learned']['clean_fpr']:.4f}"
+        margin_learned = summarize_margins(
+            y_true, logits_learned, target_idx, clean_idx
         )
+        feats_learned = None
+        if not skip_linear_probe:
+            _, feats_learned = collect_features_loader(ms_learned, loader, device)
         del ms_learned
 
-        # Random baselines
+        # Random baselines (argmax reference + margin)
         random_rows: List[Dict[str, Any]] = []
+        random_margin_rows: List[Dict[str, Any]] = []
+        random_probe_rows: List[Dict[str, Any]] = []
         for k in range(int(random_seeds)):
             seed = int(random_base_seed) + k
             hard_r = make_random_hard_masks(block_meta, masks_cfg, seed)
-            hard_r = {kk: vv.to(device) for kk, vv in hard_r.items()}
+            hard_r_dev = {kk: vv.to(device) for kk, vv in hard_r.items()}
             ms_r = build_masked_ms(
-                len(class_names),
-                ckpt,
-                extracted,
-                enable,
-                device,
-                hard=hard_r,
+                len(class_names), ckpt, extracted, enable, device, hard=hard_r_dev
             )
-            y_t, y_p, probs = predict_loader(ms_r, loader, device)
+            y_true, logits_r = collect_logits_loader(ms_r, loader, device)
+            y_pred_r = logits_r.argmax(axis=1)
+            probs_r = np.exp(logits_r - logits_r.max(axis=1, keepdims=True))
+            probs_r = probs_r / probs_r.sum(axis=1, keepdims=True)
             m = compute_retention_metrics(
-                y_t, y_p, probs, target_idx, clean_idx, class_names
+                y_true, y_pred_r, probs_r, target_idx, clean_idx, class_names
             )
             m["seed"] = seed
             random_rows.append(m)
+            mm = summarize_margins(y_true, logits_r, target_idx, clean_idx)
+            mm["seed"] = seed
+            random_margin_rows.append(mm)
+            if not skip_linear_probe:
+                _, feats_r = collect_features_loader(ms_r, loader, device)
+                pr = run_linear_probe_target_clean(
+                    feats_r, y_true, target_idx, clean_idx
+                )
+                pr["seed"] = seed
+                random_probe_rows.append(pr)
             print(
                 f"[retention] random seed={seed} "
-                f"F1={m['target_f1']:.4f} R={m['target_recall']:.4f} "
-                f"cleanFPR={m['clean_fpr']:.4f}"
+                f"F1={m['target_f1']:.4f} margin_t={mm['margin_target_mean']:.4f}"
             )
             del ms_r
         retention["random"] = random_rows
+
+        m_rand_t = _nanmean([r["margin_target_mean"] for r in random_margin_rows])
+        m_rand_c = _nanmean([r["margin_clean_mean"] for r in random_margin_rows])
+        fpr_rand = _nanmean([r["fpr_at_tpr95"] for r in random_margin_rows])
+        ret_rate = margin_retention_rate(
+            margin_full["margin_target_mean"],
+            margin_learned["margin_target_mean"],
+            m_rand_t,
+        )
+        margin_block = {
+            "original": margin_full,
+            "learned": margin_learned,
+            "random": random_margin_rows,
+            "random_summary": {
+                "margin_target_mean": m_rand_t,
+                "margin_clean_mean": m_rand_c,
+                "fpr_at_tpr95_mean": fpr_rand,
+                "n_seeds": len(random_margin_rows),
+            },
+            "margin_retention": ret_rate,
+            "delta_fpr_at_tpr95_learned_minus_random": (
+                float(margin_learned["fpr_at_tpr95"]) - float(fpr_rand)
+                if np.isfinite(margin_learned["fpr_at_tpr95"]) and np.isfinite(fpr_rand)
+                else float("nan")
+            ),
+        }
+        with open(
+            os.path.join(out_dir, "margin_metrics.json"), "w", encoding="utf-8"
+        ) as f:
+            json.dump(margin_block, f, indent=2, ensure_ascii=False)
+        print(
+            f"[SUMMARY] margin_retention={ret_rate} "
+            f"learned_target_m={margin_learned['margin_target_mean']:.4f} "
+            f"rand_target_m={m_rand_t:.4f} "
+            f"fpr95_learned={margin_learned['fpr_at_tpr95']:.4f}"
+        )
+
+        # ---- Necessity ----
+        if not skip_necessity:
+            hard_comp = {
+                k: v.to(device) for k, v in complement_hard_masks(hard_learned).items()
+            }
+            ms_ab = build_masked_ms(
+                len(class_names), ckpt, extracted, enable, device, hard=hard_comp
+            )
+            _, logits_ab = collect_logits_loader(ms_ab, loader, device)
+            margin_ab = summarize_margins(y_true, logits_ab, target_idx, clean_idx)
+            del ms_ab
+            delta_learned = float(
+                margin_full["margin_target_mean"] - margin_ab["margin_target_mean"]
+            )
+            delta_rand_list: List[float] = []
+            for k in range(int(random_seeds)):
+                seed = int(random_base_seed) + 1000 + k
+                hard_ra = random_ablate_hard_masks(hard_learned, seed)
+                hard_ra = {kk: vv.to(device) for kk, vv in hard_ra.items()}
+                ms_ra = build_masked_ms(
+                    len(class_names), ckpt, extracted, enable, device, hard=hard_ra
+                )
+                _, logits_ra = collect_logits_loader(ms_ra, loader, device)
+                mm_ra = summarize_margins(y_true, logits_ra, target_idx, clean_idx)
+                delta_rand_list.append(
+                    float(
+                        margin_full["margin_target_mean"] - mm_ra["margin_target_mean"]
+                    )
+                )
+                del ms_ra
+            delta_rand_mean = _nanmean(delta_rand_list)
+            necessity_block = {
+                "delta_learned": delta_learned,
+                "delta_random_mean": delta_rand_mean,
+                "delta_random_std": (
+                    float(np.std(delta_rand_list)) if delta_rand_list else float("nan")
+                ),
+                "necessity_gap": float(delta_learned - delta_rand_mean)
+                if np.isfinite(delta_rand_mean)
+                else float("nan"),
+                "ablate_learned_margin_target_mean": margin_ab["margin_target_mean"],
+                "n_random": len(delta_rand_list),
+            }
+            with open(
+                os.path.join(out_dir, "necessity_metrics.json"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                json.dump(necessity_block, f, indent=2, ensure_ascii=False)
+            print(
+                f"[SUMMARY] necessity_gap={necessity_block['necessity_gap']:.4f} "
+                f"delta_learned={delta_learned:.4f} "
+                f"delta_rand={delta_rand_mean:.4f}"
+            )
+
+        # ---- Keep-ratio curve ----
+        if not skip_keep_ratio_curve and os.path.isfile(soft_path):
+            soft = load_soft_masks_blob(soft_path)
+            curve_rows: List[Dict[str, Any]] = []
+            for ratio in keep_ratios:
+                hard_kr = soft_to_hard_at_ratio(
+                    soft, block_meta, masks_cfg, float(ratio)
+                )
+                hard_kr_dev = {k: v.to(device) for k, v in hard_kr.items()}
+                ms_kr = build_masked_ms(
+                    len(class_names),
+                    ckpt,
+                    extracted,
+                    enable,
+                    device,
+                    hard=hard_kr_dev,
+                )
+                _, logits_kr = collect_logits_loader(ms_kr, loader, device)
+                m_kr = summarize_margins(y_true, logits_kr, target_idx, clean_idx)
+                del ms_kr
+                # one random baseline per ratio (seed = base)
+                hard_rr = make_random_hard_masks(
+                    block_meta,
+                    {
+                        **masks_cfg,
+                        "keep_ratio": {
+                            "M_H": float(ratio),
+                            "M_O": float(ratio),
+                        },
+                    },
+                    int(random_base_seed),
+                )
+                # Force keep ratio via soft_to_hard_at_ratio on random soft
+                rng = np.random.default_rng(int(random_base_seed) + int(ratio * 1000))
+                soft_r: Dict[str, torch.Tensor] = {}
+                for meta in block_meta:
+                    bkey = meta["key"]
+                    if enable["M_H"]:
+                        soft_r[f"{bkey}.M_H"] = torch.from_numpy(
+                            rng.random(int(meta["n_h"])).astype(np.float32)
+                        )
+                    if enable["M_O"]:
+                        soft_r[f"{bkey}.M_O"] = torch.from_numpy(
+                            rng.random(int(meta["n_o"])).astype(np.float32)
+                        )
+                hard_rr = soft_to_hard_at_ratio(
+                    soft_r, block_meta, masks_cfg, float(ratio)
+                )
+                hard_rr_dev = {k: v.to(device) for k, v in hard_rr.items()}
+                ms_rr = build_masked_ms(
+                    len(class_names),
+                    ckpt,
+                    extracted,
+                    enable,
+                    device,
+                    hard=hard_rr_dev,
+                )
+                _, logits_rr = collect_logits_loader(ms_rr, loader, device)
+                m_rr = summarize_margins(y_true, logits_rr, target_idx, clean_idx)
+                del ms_rr
+                ret_r = margin_retention_rate(
+                    margin_full["margin_target_mean"],
+                    m_kr["margin_target_mean"],
+                    m_rr["margin_target_mean"],
+                )
+                row = {
+                    "keep_ratio": float(ratio),
+                    "learned_margin_target_mean": m_kr["margin_target_mean"],
+                    "random_margin_target_mean": m_rr["margin_target_mean"],
+                    "margin_retention": ret_r,
+                    "learned_fpr_at_tpr95": m_kr["fpr_at_tpr95"],
+                    "random_fpr_at_tpr95": m_rr["fpr_at_tpr95"],
+                }
+                curve_rows.append(row)
+                print(
+                    f"[keep_ratio] r={ratio:.3f} retention={ret_r} "
+                    f"m_l={m_kr['margin_target_mean']:.3f} "
+                    f"m_r={m_rr['margin_target_mean']:.3f}"
+                )
+            ratios = [r["keep_ratio"] for r in curve_rows]
+            auc_l = trapezoid_auc(
+                ratios, [r["margin_retention"] for r in curve_rows]
+            )
+            # AUC of learned-random margin gap
+            gap = [
+                float(r["learned_margin_target_mean"])
+                - float(r["random_margin_target_mean"])
+                for r in curve_rows
+            ]
+            auc_gap = trapezoid_auc(ratios, gap)
+            keep_ratio_block = {
+                "ratios": list(keep_ratios),
+                "curve": curve_rows,
+                "keep_ratio_auc_margin_retention": auc_l,
+                "keep_ratio_auc_margin_gap_learned_minus_random": auc_gap,
+            }
+            kr_csv = os.path.join(out_dir, "keep_ratio_curve.csv")
+            _write_csv(kr_csv, curve_rows)
+            with open(
+                os.path.join(out_dir, "keep_ratio_curve.json"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                json.dump(keep_ratio_block, f, indent=2, ensure_ascii=False)
+            keep_ratio_block["csv"] = kr_csv
+        elif not skip_keep_ratio_curve:
+            warnings.append(f"soft_masks.pt missing at {soft_path}; skip keep-ratio curve")
+
+        # ---- Linear probe ----
+        if not skip_linear_probe and feats_learned is not None:
+            learned_probe = run_linear_probe_target_clean(
+                feats_learned, y_true, target_idx, clean_idx
+            )
+            ok_rand = [r for r in random_probe_rows if r.get("ok")]
+            linear_probe_block = {
+                "learned": learned_probe,
+                "random": random_probe_rows,
+                "random_summary": {
+                    "accuracy_mean": _nanmean([r["accuracy"] for r in ok_rand]),
+                    "accuracy_std": float(np.std([r["accuracy"] for r in ok_rand]))
+                    if ok_rand
+                    else float("nan"),
+                    "auroc_mean": _nanmean(
+                        [r["auroc"] for r in ok_rand if r.get("auroc") is not None]
+                    ),
+                    "n_ok": len(ok_rand),
+                },
+            }
+            with open(
+                os.path.join(out_dir, "linear_probe.json"), "w", encoding="utf-8"
+            ) as f:
+                json.dump(linear_probe_block, f, indent=2, ensure_ascii=False)
+            print(
+                f"[SUMMARY] linear_probe learned_acc="
+                f"{learned_probe.get('accuracy')} "
+                f"rand_acc={linear_probe_block['random_summary']['accuracy_mean']}"
+            )
+
     finally:
         _safe_rmtree(work_root)
         print(f"[INFO] cleaned eval data {work_root}")
@@ -1205,6 +1901,7 @@ def evaluate_subnet_quality(
     with open(retention_path, "w", encoding="utf-8") as f:
         json.dump(
             {
+                "note": "reference_argmax_retention (may saturate; prefer margin)",
                 "original": retention["original"],
                 "learned": retention["learned"],
                 "random": retention["random"],
@@ -1218,19 +1915,32 @@ def evaluate_subnet_quality(
             ensure_ascii=False,
         )
 
-    warnings: List[str] = []
     learned_f1 = float(retention["learned"]["target_f1"])
     rand_mean = float(random_summary["target_f1_mean"])
     if not (learned_f1 > rand_mean):
         warnings.append(
-            f"learned target_f1={learned_f1:.4f} is not higher than "
-            f"random mean={rand_mean:.4f}; localization may not beat chance "
-            "at this keep_ratio."
+            f"[reference] learned target_f1={learned_f1:.4f} is not higher than "
+            f"random mean={rand_mean:.4f}."
+        )
+    if not loc_has_mask_seed:
+        warnings.append(
+            "localization config.json has no MASK_SEED/train_mask_seed; "
+            f"cannot verify against patch MASK_SEED={train_mask_seed}."
+        )
+    elif not mask_seed_consistent:
+        warnings.append(
+            f"mask_seed_consistent=False: loc expected {expected_mask_seed}, "
+            f"patch has {train_mask_seed}."
+        )
+    if not np.isfinite(ret_rate):
+        warnings.append(
+            "margin_retention is nan (near-zero full-vs-random denominator)."
         )
 
     summary: Dict[str, Any] = {
         "localization_dir": localization_dir,
         "patch_run_dir": patch_dir,
+        "patch_manifest_sha256": patch_manifest_sha256,
         "checkpoint_path": ckpt,
         "node": node,
         "attack_class": attack_class,
@@ -1238,6 +1948,10 @@ def evaluate_subnet_quality(
         "target_class_name": class_names[target_idx],
         "clean_class_idx": clean_idx,
         "extracted_layer": extracted,
+        "train_mask_seed": train_mask_seed,
+        "expected_mask_seed": int(expected_mask_seed),
+        "mask_seed_consistent": bool(mask_seed_consistent),
+        "test_mask_seed": int(test_mask_seed),
         "keep_ratio": {
             t: float(masks_cfg.get("keep_ratio", {}).get(t, 0.25))
             for t in MASK_TYPES
@@ -1251,6 +1965,23 @@ def evaluate_subnet_quality(
             "n_images": func_loc["n_images"],
             "n_terms": func_loc["n_terms"],
         },
+        "margin": margin_block,
+        "necessity": necessity_block,
+        "keep_ratio_curve": keep_ratio_block,
+        "linear_probe": linear_probe_block,
+        "reference_argmax_retention": {
+            "original": retention["original"],
+            "learned": retention["learned"],
+            "random_summary": random_summary,
+            "learned_vs_random": {
+                "learned_target_f1": learned_f1,
+                "random_target_f1_mean": rand_mean,
+                "random_target_f1_std": random_summary["target_f1_std"],
+                "delta_f1_learned_minus_random_mean": learned_f1 - rand_mean,
+            },
+            "note": "Argmax F1/cleanFPR may saturate; primary metrics are margin/necessity.",
+        },
+        # Backward-compatible aliases
         "retention": {
             "original": retention["original"],
             "learned": retention["learned"],
@@ -1269,6 +2000,7 @@ def evaluate_subnet_quality(
                 out_dir, "functional_localization.json"
             ),
             "retention_per_model_json": retention_path,
+            "margin_metrics_json": os.path.join(out_dir, "margin_metrics.json"),
         },
     }
     summary_path = os.path.join(out_dir, "subnet_quality_summary.json")
@@ -1278,9 +2010,10 @@ def evaluate_subnet_quality(
     print(f"[INFO] wrote {retention_path}")
     print(f"[INFO] wrote {summary_path}")
     print(
-        f"[SUMMARY] learned_F1={learned_f1:.4f} "
-        f"random_F1={rand_mean:.4f}±{random_summary['target_f1_std']:.4f} "
-        f"delta={learned_f1 - rand_mean:.4f}"
+        f"[SUMMARY] PRIMARY margin_retention={ret_rate} "
+        f"necessity_gap="
+        f"{None if necessity_block is None else necessity_block.get('necessity_gap')} "
+        f"| reference F1 learned={learned_f1:.4f} random={rand_mean:.4f}"
     )
     for w in warnings:
         print(f"[WARN] {w}")
@@ -1289,16 +2022,166 @@ def evaluate_subnet_quality(
     return summary
 
 
+def compare_subnet_stability(
+    localization_dirs: Sequence[str],
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Pairwise hard Jaccard + soft Spearman across localization runs."""
+    dirs = [os.path.abspath(d) for d in localization_dirs]
+    if len(dirs) < 2:
+        raise ValueError("Need >=2 localization dirs for stability compare")
+    softs: List[Dict[str, torch.Tensor]] = []
+    hards: List[Dict[str, torch.Tensor]] = []
+    for d in dirs:
+        sp = os.path.join(d, "soft_masks.pt")
+        hp = os.path.join(d, "hard_masks.pt")
+        if not os.path.isfile(sp) or not os.path.isfile(hp):
+            raise FileNotFoundError(f"Missing soft/hard masks under {d}")
+        softs.append(load_soft_masks_blob(sp))
+        hards.append(torch.load(hp, map_location="cpu"))
+        hards[-1] = {k: v.float().cpu() for k, v in hards[-1].items()}
+
+    keys = sorted(set(hards[0].keys()) & set(softs[0].keys()))
+    for i, d in enumerate(dirs):
+        missing_h = set(keys) - set(hards[i].keys())
+        missing_s = set(keys) - set(softs[i].keys())
+        if missing_h or missing_s:
+            raise KeyError(f"{d} missing keys hard={missing_h} soft={missing_s}")
+
+    pairs: List[Dict[str, Any]] = []
+    for i in range(len(dirs)):
+        for j in range(i + 1, len(dirs)):
+            per_key = {}
+            jac_vals = []
+            rho_vals = []
+            for k in keys:
+                jac = hard_jaccard(hards[i][k], hards[j][k])
+                rho = soft_spearman(softs[i][k], softs[j][k])
+                per_key[k] = {"hard_jaccard": jac, "soft_spearman": rho}
+                jac_vals.append(jac)
+                rho_vals.append(rho)
+            pairs.append(
+                {
+                    "dir_a": dirs[i],
+                    "dir_b": dirs[j],
+                    "mean_hard_jaccard": _nanmean(jac_vals),
+                    "mean_soft_spearman": _nanmean(rho_vals),
+                    "per_key": per_key,
+                }
+            )
+
+    out_root = os.path.abspath(output_dir) if output_dir else dirs[0]
+    os.makedirs(out_root, exist_ok=True)
+    result = {
+        "localization_dirs": dirs,
+        "n_dirs": len(dirs),
+        "keys": keys,
+        "pairs": pairs,
+        "mean_pairwise_hard_jaccard": _nanmean(
+            [p["mean_hard_jaccard"] for p in pairs]
+        ),
+        "mean_pairwise_soft_spearman": _nanmean(
+            [p["mean_soft_spearman"] for p in pairs]
+        ),
+    }
+    out_path = os.path.join(out_root, "subnet_stability_compare.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+    print(f"[INFO] wrote {out_path}")
+    print(
+        f"[SUMMARY] mean hard Jaccard={result['mean_pairwise_hard_jaccard']:.4f} "
+        f"mean soft Spearman={result['mean_pairwise_soft_spearman']:.4f}"
+    )
+    result["output_json"] = out_path
+    return result
+
+
+def compare_surrogate_absolute_levels(
+    localization_dirs: Sequence[str],
+    bootstrap_samples: int = 1000,
+    bootstrap_seed: int = 0,
+    output_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Paired per-image R^2 differences across runs (requires quality CSVs)."""
+    import csv as _csv
+
+    dirs = [os.path.abspath(d) for d in localization_dirs]
+    if len(dirs) < 2:
+        raise ValueError("Need >=2 dirs for comparative surrogate")
+
+    by_dir: Dict[str, Dict[str, float]] = {}
+    for d in dirs:
+        csv_path = os.path.join(
+            d, "surrogate_quality", "surrogate_quality_per_image.csv"
+        )
+        if not os.path.isfile(csv_path):
+            raise FileNotFoundError(csv_path)
+        rows = list(_csv.DictReader(open(csv_path, encoding="utf-8")))
+        by_dir[d] = {r["image_id"]: float(r["r2"]) for r in rows if r.get("r2")}
+
+    pairs: List[Dict[str, Any]] = []
+    for i in range(len(dirs)):
+        for j in range(i + 1, len(dirs)):
+            a, b = dirs[i], dirs[j]
+            common = sorted(set(by_dir[a]) & set(by_dir[b]))
+            diffs = [by_dir[b][iid] - by_dir[a][iid] for iid in common]
+            boot = bootstrap_mean_median_ci(
+                diffs, n_boot=bootstrap_samples, seed=bootstrap_seed
+            )
+            pairs.append(
+                {
+                    "dir_a": a,
+                    "dir_b": b,
+                    "n_common_images": len(common),
+                    "mean_r2_diff_b_minus_a": _nanmean(diffs),
+                    "frac_b_better": float(np.mean(np.asarray(diffs) > 0))
+                    if diffs
+                    else float("nan"),
+                    "bootstrap": boot,
+                }
+            )
+
+    out_root = os.path.abspath(output_dir) if output_dir else dirs[0]
+    os.makedirs(
+        os.path.join(out_root, "surrogate_quality"), exist_ok=True
+    )
+    result = {
+        "localization_dirs": dirs,
+        "pairs": pairs,
+        "note": (
+            "Paired R^2 diffs; if mean CI crosses 0, trials are not "
+            "distinguishable on surrogate fit quality."
+        ),
+    }
+    out_path = os.path.join(
+        out_root, "surrogate_quality", "surrogate_comparative.json"
+    )
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+    # Also patch first dir summary if present
+    summary_path = os.path.join(
+        dirs[0], "surrogate_quality", "surrogate_quality_summary.json"
+    )
+    if os.path.isfile(summary_path):
+        summary = load_json(summary_path)
+        summary["comparative"] = result
+        with open(summary_path, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+    print(f"[INFO] wrote {out_path}")
+    result["output_json"] = out_path
+    return result
+
+
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=(
-            "Evaluate localization quality: local-surrogate metrics and/or "
-            "subnet metrics (E_loc/E_src + target retention vs random)."
+            "Evaluate localization quality: surrogate metrics (R2/MSE/margin) "
+            "and subnet metrics (margin/necessity/keep-ratio/probe)."
         )
     )
     p.add_argument(
         "--localization_dir",
-        required=True,
+        default=None,
         help="Path to a localization_result/<run>/ directory",
     )
     p.add_argument(
@@ -1334,6 +2217,27 @@ def build_argparser() -> argparse.ArgumentParser:
         help="R^2 total-sum-of-squares floor; below -> nan",
     )
     p.add_argument(
+        "--bootstrap_samples",
+        type=int,
+        default=1000,
+        help="Bootstrap resamples for mean/median CI (default: 1000)",
+    )
+    p.add_argument(
+        "--keep_ratios",
+        type=str,
+        default="0.02,0.05,0.1,0.25",
+        help="Comma-separated keep ratios for subnet curve",
+    )
+    p.add_argument(
+        "--compare_localization_dirs",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated localization dirs for soft/hard stability "
+            "compare and paired R2 diffs (optional; can run alone)."
+        ),
+    )
+    p.add_argument(
         "--skip_surrogate",
         action="store_true",
         help="Skip local-surrogate quality section",
@@ -1342,6 +2246,21 @@ def build_argparser() -> argparse.ArgumentParser:
         "--skip_subnet",
         action="store_true",
         help="Skip subnet quality section",
+    )
+    p.add_argument(
+        "--skip_necessity",
+        action="store_true",
+        help="Skip necessity (ablate) metrics",
+    )
+    p.add_argument(
+        "--skip_keep_ratio_curve",
+        action="store_true",
+        help="Skip multi keep-ratio curve",
+    )
+    p.add_argument(
+        "--skip_linear_probe",
+        action="store_true",
+        help="Skip linear probe on subnet features",
     )
     p.add_argument(
         "--random_seeds",
@@ -1358,10 +2277,44 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
+def _parse_keep_ratios(s: str) -> List[float]:
+    parts = [p.strip() for p in str(s).split(",") if p.strip()]
+    if not parts:
+        return [0.02, 0.05, 0.1, 0.25]
+    return [float(p) for p in parts]
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_argparser().parse_args(argv)
+    compare_dirs = None
+    if args.compare_localization_dirs:
+        compare_dirs = [
+            os.path.abspath(x.strip())
+            for x in args.compare_localization_dirs.split(",")
+            if x.strip()
+        ]
+
+    if compare_dirs and not args.localization_dir:
+        compare_subnet_stability(compare_dirs)
+        # Comparative R2 only if CSVs already exist
+        try:
+            compare_surrogate_absolute_levels(
+                compare_dirs,
+                bootstrap_samples=int(args.bootstrap_samples),
+            )
+        except FileNotFoundError as e:
+            print(f"[WARN] skip surrogate comparative: {e}")
+        return 0
+
+    if not args.localization_dir:
+        raise SystemExit(
+            "error: --localization_dir is required unless "
+            "only --compare_localization_dirs is used"
+        )
+
     loc_dir = os.path.abspath(args.localization_dir)
     hard_path = os.path.join(loc_dir, "hard_masks.pt")
+    keep_ratios = _parse_keep_ratios(args.keep_ratios)
 
     if not args.skip_surrogate:
         evaluate_localization_surrogates(
@@ -1371,6 +2324,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             device_str=args.device,
             batch_size=int(args.batch_size),
             r2_eps=float(args.r2_eps),
+            bootstrap_samples=int(args.bootstrap_samples),
         )
     else:
         print("[INFO] skip_surrogate: surrogate quality not run")
@@ -1391,9 +2345,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             batch_size=int(args.batch_size),
             random_seeds=int(args.random_seeds),
             random_base_seed=int(args.random_base_seed),
+            keep_ratios=keep_ratios,
+            skip_necessity=bool(args.skip_necessity),
+            skip_keep_ratio_curve=bool(args.skip_keep_ratio_curve),
+            skip_linear_probe=bool(args.skip_linear_probe),
         )
     elif args.skip_subnet:
         print("[INFO] skip_subnet: subnet quality not run")
+
+    if compare_dirs:
+        # Ensure primary dir is included
+        all_dirs = list(dict.fromkeys([loc_dir] + compare_dirs))
+        if len(all_dirs) >= 2:
+            compare_subnet_stability(all_dirs, output_dir=loc_dir)
+            try:
+                compare_surrogate_absolute_levels(
+                    all_dirs,
+                    bootstrap_samples=int(args.bootstrap_samples),
+                    output_dir=loc_dir,
+                )
+            except FileNotFoundError as e:
+                print(f"[WARN] skip surrogate comparative: {e}")
 
     return 0
 

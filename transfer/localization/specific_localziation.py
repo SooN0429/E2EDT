@@ -1348,6 +1348,7 @@ def run_localization(cfg: Dict[str, Any]) -> str:
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
 
+    mask_seed = int(patch_cfg["MASK_SEED"])
     cfg_snapshot = deepcopy(cfg)
     cfg_snapshot.update(
         {
@@ -1362,6 +1363,8 @@ def run_localization(cfg: Dict[str, Any]) -> str:
             "grid_rows": grid_rows,
             "grid_cols": grid_cols,
             "keep_prob": keep_prob,
+            "MASK_SEED": mask_seed,
+            "train_mask_seed": mask_seed,
         }
     )
     save_run_config(cfg_snapshot, out_dir)

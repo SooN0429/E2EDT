@@ -515,7 +515,8 @@ def generate_patch_dataset(
         f"RANDOM_SEED={patch_cfg['RANDOM_SEED']})"
     )
 
-    out_name = f"{plan['run_name']}_{node_name}_{class_name}"
+    mask_seed = int(patch_cfg["MASK_SEED"])
+    out_name = f"{plan['run_name']}_{node_name}_{class_name}_maskseed{mask_seed}"
     out_dir = os.path.join(os.path.abspath(output_root), out_name)
     result: Dict[str, Any] = {
         "output_dir": out_dir,
