@@ -14,6 +14,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from copy import deepcopy
@@ -31,6 +32,7 @@ _E2EDT_ROOT = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", ".."))
 _NODE_TRAINING_DIR = os.path.join(_E2EDT_ROOT, "node_model_training")
 _DEFAULT_CONFIG = os.path.join(_SCRIPT_DIR, "localization_config.json")
 _DEFAULT_OUTPUT_ROOT = os.path.join(_SCRIPT_DIR, "localization_result")
+_DAY_SEQ_RE = re.compile(r"^(\d{4})_(\d+)_")
 
 if _NODE_TRAINING_DIR not in sys.path:
     sys.path.insert(0, _NODE_TRAINING_DIR)
@@ -1263,17 +1265,45 @@ def resolve_target_class_idx(
     return int(class_names.index(name))
 
 
+def _next_day_seq(output_root: str, mmdd: str) -> int:
+    root = os.path.abspath(output_root)
+    if not os.path.isdir(root):
+        return 1
+    max_seq = 0
+    prefix = f"{mmdd}_"
+    for name in os.listdir(root):
+        if not name.startswith(prefix):
+            continue
+        m = _DAY_SEQ_RE.match(name)
+        if not m or m.group(1) != mmdd:
+            continue
+        try:
+            max_seq = max(max_seq, int(m.group(2)))
+        except ValueError:
+            continue
+    return max_seq + 1
+
+
 def default_output_dir(
     output_root: Optional[str],
     patch_run_dir: str,
     node: str,
     attack_class: str,
 ) -> str:
-    root = output_root or _DEFAULT_OUTPUT_ROOT
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    """Dated layout: localization_result/<MMDD>/{MMDD}_{seq}_{patch}_{node}_{atk}/."""
+    base = os.path.abspath(output_root or _DEFAULT_OUTPUT_ROOT)
+    mmdd = datetime.now().strftime("%m%d")
+    day_root = os.path.join(base, mmdd)
+    os.makedirs(day_root, exist_ok=True)
+    seq = _next_day_seq(day_root, mmdd)
     patch_name = os.path.basename(os.path.abspath(patch_run_dir).rstrip("/"))
-    name = f"{stamp}_{patch_name}_{node}_{attack_class}"
-    return os.path.join(root, name)
+    safe = [
+        str(p).replace("/", "_").replace(" ", "_")
+        for p in (patch_name, node, attack_class)
+        if p is not None
+    ]
+    folder = "_".join([mmdd, str(seq)] + safe)
+    return os.path.join(day_root, folder)
 
 
 def save_run_config(cfg: Dict[str, Any], out_dir: str) -> None:
