@@ -313,12 +313,13 @@ def train_scratch_classifier(
     lr: float = 1e-4,
     seed: int = 0,
     out_dir: Optional[str] = None,
-    early_stop_patience: int = 10,
+    early_stop_patience: int = 5,
+    early_stop_min_delta: float = 1e-3,
 ) -> Dict[str, Any]:
     """Extract cut-point features, then train ResNet18 tail (node_training style).
 
     Early stopping monitors validation CrossEntropy loss (no label smoothing);
-    patience<=0 disables early stop.
+    patience<=0 disables early stop. Improvement requires best - val_loss >= min_delta.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -329,6 +330,7 @@ def train_scratch_classifier(
     test_root = os.path.join(data_root, "test")
     n_class = len(class_names)
     patience = int(early_stop_patience)
+    min_delta = float(early_stop_min_delta)
 
     features_dir = os.path.join(data_root, "features")
     print(
@@ -435,7 +437,7 @@ def train_scratch_classifier(
     if patience > 0:
         print(
             f"[INFO] scratch early stopping: monitor=val_loss "
-            f"patience={patience} restore_best_weights=True"
+            f"patience={patience} min_delta={min_delta:g} restore_best_weights=True"
         )
     else:
         print("[INFO] scratch early stopping disabled (patience<=0)")
@@ -495,7 +497,7 @@ def train_scratch_classifier(
             f"val_acc={val_acc:.3f} time={epoch_time:.2f}s"
         )
 
-        improved = val_loss < best_val_loss
+        improved = (best_val_loss - float(val_loss)) >= min_delta
         if improved:
             best_val_loss = float(val_loss)
             best_epoch = e + 1
@@ -510,7 +512,7 @@ def train_scratch_classifier(
             early_stopped = True
             print(
                 f"[scratch] early stop at epoch={e + 1} "
-                f"(no val_loss improve for {patience} epochs); "
+                f"(no val_loss improve >= {min_delta:g} for {patience} epochs); "
                 f"best_epoch={best_epoch} best_val_loss={best_val_loss:.6f}"
             )
             break
@@ -525,6 +527,7 @@ def train_scratch_classifier(
     wall_sec = time.time() - t_all0
     early_stop_meta = {
         "early_stop_patience": patience,
+        "early_stop_min_delta": min_delta,
         "early_stopped": bool(early_stopped),
         "best_epoch": int(best_epoch) if best_epoch else None,
         "best_val_loss": float(best_val_loss) if best_state is not None else None,
@@ -615,7 +618,8 @@ def run_scratch_baseline(
     epochs: int = 50,
     batch_size: int = 8,
     lr: float = 1e-4,
-    early_stop_patience: int = 10,
+    early_stop_patience: int = 5,
+    early_stop_min_delta: float = 1e-3,
 ) -> Dict[str, Any]:
     data_root = os.path.join(os.path.abspath(output_dir), "scratch_data")
     meta = generate_cross_node_dataset(
@@ -642,6 +646,7 @@ def run_scratch_baseline(
         seed=seed,
         out_dir=train_out,
         early_stop_patience=early_stop_patience,
+        early_stop_min_delta=early_stop_min_delta,
     )
     result["dataset_meta"] = meta
     result["data_root"] = data_root

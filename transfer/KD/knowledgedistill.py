@@ -1051,7 +1051,26 @@ def train_distill(
     epoch_times: List[float] = []
     t_all0 = _time.time()
 
-    for epoch in range(int(cfg["epochs"])):
+    epochs_max = int(cfg["epochs"])
+    patience = int(cfg.get("early_stop_patience", 0) or 0)
+    min_delta = float(cfg.get("early_stop_min_delta", 0.0) or 0.0)
+    best_loss = float("inf")
+    best_epoch = 0
+    best_adapter: Optional[Dict[str, torch.Tensor]] = None
+    best_classifier: Optional[Dict[str, torch.Tensor]] = None
+    epochs_no_improve = 0
+    early_stopped = False
+    epochs_ran = 0
+
+    if patience > 0:
+        print(
+            f"[INFO] distill early stopping: monitor=train_loss "
+            f"patience={patience} min_delta={min_delta:g} restore_best_weights=True"
+        )
+    else:
+        print("[INFO] distill early stopping disabled (patience<=0)")
+
+    for epoch in range(epochs_max):
         student.train()
         student.mf.eval()
         student.bn1.eval()
@@ -1097,6 +1116,7 @@ def train_distill(
 
         epoch_time = _time.time() - t0
         epoch_times.append(epoch_time)
+        epochs_ran = epoch + 1
         row = {
             "epoch": epoch,
             "loss": sum_tot / max(n, 1),
@@ -1107,18 +1127,60 @@ def train_distill(
         }
         history.append(row)
         print(
-            f"[distill] epoch {epoch + 1}/{cfg['epochs']} "
+            f"[distill] epoch {epoch + 1}/{epochs_max} "
             f"loss={row['loss']:.6f} old={row['loss_old']:.6f} "
             f"new={row['loss_new']:.6f} "
             f"|Δold|={row['old_logit_mean_abs_vs_teacher']:.6f} "
             f"time={epoch_time:.2f}s"
         )
+
+        epoch_loss = float(row["loss"])
+        improved = (best_loss - epoch_loss) >= min_delta
+        if improved:
+            best_loss = epoch_loss
+            best_epoch = epoch + 1
+            best_adapter = {
+                k: v.detach().cpu().clone()
+                for k, v in student.adapter.state_dict().items()
+            }
+            best_classifier = {
+                k: v.detach().cpu().clone()
+                for k, v in student.classifier_layer.state_dict().items()
+            }
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+
+        if patience > 0 and epochs_no_improve >= patience:
+            early_stopped = True
+            print(
+                f"[distill] early stop at epoch={epoch + 1} "
+                f"(no train_loss improve >= {min_delta:g} for {patience} epochs); "
+                f"best_epoch={best_epoch} best_loss={best_loss:.6f}"
+            )
+            break
+
+    if best_adapter is not None and best_classifier is not None:
+        student.adapter.load_state_dict(best_adapter)
+        student.classifier_layer.load_state_dict(best_classifier)
+        print(
+            f"[INFO] restored best distill weights from epoch={best_epoch} "
+            f"loss={best_loss:.6f}"
+        )
+
     stats = {
         "wall_clock_sec": _time.time() - t_all0,
         "n_train_steps": n_steps,
         "epoch_times_sec": epoch_times,
-        "epochs": int(cfg["epochs"]),
+        "epochs": epochs_max,
         "batch_size": int(cfg.get("batch_size", 16)),
+        "early_stop_patience": patience,
+        "early_stop_min_delta": min_delta,
+        "early_stopped": bool(early_stopped),
+        "best_epoch": int(best_epoch) if best_epoch else None,
+        "best_train_loss": float(best_loss) if best_adapter is not None else None,
+        "epochs_ran": int(epochs_ran),
+        "epochs_max": epochs_max,
     }
     return history, stats
 

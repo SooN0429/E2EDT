@@ -190,6 +190,14 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         distill_overrides["batch_size"] = int(cfg["batch_size"])
     if cfg.get("seed") is not None:
         distill_overrides["seed"] = int(cfg["seed"])
+    if cfg.get("distill_early_stop_patience") is not None:
+        distill_overrides["early_stop_patience"] = int(
+            cfg["distill_early_stop_patience"]
+        )
+    if cfg.get("distill_early_stop_min_delta") is not None:
+        distill_overrides["early_stop_min_delta"] = float(
+            cfg["distill_early_stop_min_delta"]
+        )
 
     distill_cfg = distill.load_distill_config(
         cfg.get("distill_config"), overrides=distill_overrides
@@ -260,7 +268,12 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         early_stop_patience=int(
             cfg["scratch_early_stop_patience"]
             if cfg.get("scratch_early_stop_patience") is not None
-            else 10
+            else 5
+        ),
+        early_stop_min_delta=float(
+            cfg["scratch_early_stop_min_delta"]
+            if cfg.get("scratch_early_stop_min_delta") is not None
+            else 1e-3
         ),
     )
     scratch_model = scratch_result["model"]
@@ -386,18 +399,36 @@ def build_argparser() -> argparse.ArgumentParser:
         default=_DEFAULT_DISTILL_ROOT,
     )
     p.add_argument("--distill_config", type=str, default=None)
-    p.add_argument("--epochs", type=int, default=None, help="Distill epochs.")
+    p.add_argument("--epochs", type=int, default=None, help="Distill max epochs.")
     p.add_argument("--distill_lr", type=float, default=None)
     p.add_argument("--batch_size", type=int, default=None)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument(
+        "--distill_early_stop_patience",
+        type=int,
+        default=10,
+        help="Distill early-stop patience on train distill loss; <=0 disables.",
+    )
+    p.add_argument(
+        "--distill_early_stop_min_delta",
+        type=float,
+        default=0.004,
+        help="Min train-loss drop to count as improvement (default 4e-3).",
+    )
     p.add_argument("--scratch_epochs", type=int, default=50)
     p.add_argument("--scratch_batch_size", type=int, default=8)
     p.add_argument("--scratch_lr", type=float, default=1e-4)
     p.add_argument(
         "--scratch_early_stop_patience",
         type=int,
-        default=10,
+        default=5,
         help="Scratch early-stop patience on val_loss; <=0 disables.",
+    )
+    p.add_argument(
+        "--scratch_early_stop_min_delta",
+        type=float,
+        default=0.001,
+        help="Min val_loss drop to count as improvement (default 1e-3).",
     )
     p.add_argument("--eval_batch_size", type=int, default=32)
     p.add_argument(
@@ -423,10 +454,13 @@ def main() -> None:
         "distill_lr": args.distill_lr,
         "batch_size": args.batch_size,
         "seed": args.seed,
+        "distill_early_stop_patience": args.distill_early_stop_patience,
+        "distill_early_stop_min_delta": args.distill_early_stop_min_delta,
         "scratch_epochs": args.scratch_epochs,
         "scratch_batch_size": args.scratch_batch_size,
         "scratch_lr": args.scratch_lr,
         "scratch_early_stop_patience": args.scratch_early_stop_patience,
+        "scratch_early_stop_min_delta": args.scratch_early_stop_min_delta,
         "eval_batch_size": args.eval_batch_size,
         "cleanup_patch": bool(args.cleanup_patch),
     }
