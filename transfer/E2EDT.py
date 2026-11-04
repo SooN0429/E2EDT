@@ -257,12 +257,17 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         epochs=scratch_epochs,
         batch_size=int(cfg.get("scratch_batch_size") or 8),
         lr=float(cfg.get("scratch_lr") or 1e-4),
+        early_stop_patience=int(
+            cfg["scratch_early_stop_patience"]
+            if cfg.get("scratch_early_stop_patience") is not None
+            else 10
+        ),
     )
     scratch_model = scratch_result["model"]
     scratch_resources = scratch_result["resources"]
     test_root = scratch_result["test_root"]
 
-    # --- Unified eval on 2B test set ---
+    # --- Unified eval: E2EDT/scratch @ 3-class; original target @ old-only 2-class ---
     print("[INFO] === unified comparison eval ===")
     bs = int(cfg.get("eval_batch_size") or 32)
     e2edt_metrics = ceval.evaluate_predict_fn(
@@ -279,13 +284,19 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         device=device,
         batch_size=bs,
     )
+    test_old_root = ceval.materialize_old_class_test_root(
+        test_root=test_root,
+        old_classes=target_classes,
+        dest_root=os.path.join(out_dir, "scratch_data", "test_old"),
+    )
     original_metrics = ceval.evaluate_predict_fn(
         lambda x: teacher.predict(x, test_flag=1),
-        test_root=test_root,
-        eval_class_names=eval_classes,
+        test_root=test_old_root,
+        eval_class_names=target_classes,
         device=device,
         batch_size=bs,
         n_logits=len(target_classes),
+        n_old_classes=len(target_classes),
     )
     common.save_json(os.path.join(out_dir, "metrics_e2edt.json"), e2edt_metrics)
     common.save_json(os.path.join(out_dir, "metrics_scratch.json"), scratch_metrics)
@@ -329,6 +340,7 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         "sample_ratio": sample_ratio,
         "n_source_images": n_source_images,
         "test_root": test_root,
+        "test_old_root": test_old_root,
     }
     common.save_json(os.path.join(out_dir, "e2edt_pipeline.json"), pipeline)
     print(f"[INFO] E2EDT Stage2 done -> {out_dir}")
@@ -381,6 +393,12 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--scratch_epochs", type=int, default=50)
     p.add_argument("--scratch_batch_size", type=int, default=8)
     p.add_argument("--scratch_lr", type=float, default=1e-4)
+    p.add_argument(
+        "--scratch_early_stop_patience",
+        type=int,
+        default=10,
+        help="Scratch early-stop patience on val_loss; <=0 disables.",
+    )
     p.add_argument("--eval_batch_size", type=int, default=32)
     p.add_argument(
         "--cleanup_patch",
@@ -408,6 +426,7 @@ def main() -> None:
         "scratch_epochs": args.scratch_epochs,
         "scratch_batch_size": args.scratch_batch_size,
         "scratch_lr": args.scratch_lr,
+        "scratch_early_stop_patience": args.scratch_early_stop_patience,
         "eval_batch_size": args.eval_batch_size,
         "cleanup_patch": bool(args.cleanup_patch),
     }

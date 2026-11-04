@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -59,6 +61,54 @@ def _macro_from_per_class(
     }
 
 
+def materialize_old_class_test_root(
+    test_root: str,
+    old_classes: Sequence[str],
+    dest_root: str,
+) -> str:
+    """
+    Build a 2-class (old-only) ImageFolder from a multi-class test root.
+
+    Copies/hardlinks only ``{idx:02d}_{old_class}`` folders into ``dest_root``.
+    """
+    import node_traindata_generate as ntdg
+
+    test_root = os.path.abspath(test_root)
+    dest_root = os.path.abspath(dest_root)
+    if os.path.isdir(dest_root):
+        shutil.rmtree(dest_root)
+    os.makedirs(dest_root, exist_ok=True)
+
+    n_linked = 0
+    for idx, cname in enumerate(old_classes):
+        folder = ntdg.class_folder_name(idx, cname)
+        src_dir = os.path.join(test_root, folder)
+        if not os.path.isdir(src_dir):
+            raise FileNotFoundError(
+                f"Old-class folder missing under test_root: {src_dir}"
+            )
+        dst_dir = os.path.join(dest_root, folder)
+        os.makedirs(dst_dir, exist_ok=True)
+        for name in sorted(os.listdir(src_dir)):
+            src = os.path.join(src_dir, name)
+            if not os.path.isfile(src) or name.startswith("."):
+                continue
+            dst = os.path.join(dst_dir, name)
+            try:
+                os.link(src, dst)
+            except OSError:
+                shutil.copy2(src, dst)
+            n_linked += 1
+
+    if n_linked < 1:
+        raise RuntimeError(f"No images materialized into {dest_root}")
+    print(
+        f"[INFO] materialize_old_class_test_root: {n_linked} files -> {dest_root} "
+        f"classes={list(old_classes)}"
+    )
+    return dest_root
+
+
 @torch.no_grad()
 def evaluate_predict_fn(
     predict_fn: Callable[[torch.Tensor], torch.Tensor],
@@ -67,17 +117,26 @@ def evaluate_predict_fn(
     device: torch.device,
     batch_size: int = 32,
     n_logits: Optional[int] = None,
+    n_old_classes: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Evaluate a logits predict_fn on ImageFolder test.
 
-    If the model outputs fewer logits than len(eval_class_names) (original target),
-    new-class predictions are treated as impossible (never correct).
+    ``n_old_classes``: first N names are old classes. Default ``len-1`` (last is new).
+    Set ``n_old_classes=len(eval_class_names)`` for old-only (e.g. original target @ 2-class).
     """
     import node_traindata_generate as ntdg
 
     n_all = len(eval_class_names)
-    n_old = n_all - 1 if n_all >= 1 else 0
+    if n_old_classes is None:
+        n_old = n_all - 1 if n_all >= 1 else 0
+    else:
+        n_old = int(n_old_classes)
+        if n_old < 0 or n_old > n_all:
+            raise ValueError(
+                f"n_old_classes={n_old_classes} out of range for "
+                f"{n_all} eval classes"
+            )
     ds = datasets.ImageFolder(root=test_root, transform=IMAGENET_TRANSFORM)
     folder_names = [n for n, _ in sorted(ds.class_to_idx.items(), key=lambda kv: kv[1])]
     expected = [ntdg.class_folder_name(i, c) for i, c in enumerate(eval_class_names)]
@@ -137,6 +196,8 @@ def evaluate_predict_fn(
         "n_samples": int(len(y_true)),
         "eval_class_names": list(eval_class_names),
         "n_model_logits": int(n_out) if len(y_pred_list) else None,
+        "n_old_classes": int(n_old),
+        "test_root": os.path.abspath(test_root),
     }
 
 
@@ -172,9 +233,12 @@ def build_comparison_report(
     old_names = list(eval_class_names[:n_old])
     new_name = eval_class_names[n_old]
 
-    # Original target has no new class → before new metrics are zeros
+    # Original @ 2-class baseline; E2EDT @ 3-class (incl. new). New before=0.
     before_new = {"f1": 0.0, "recall": 0.0, "acc": 0.0, "n": 0}
     after_new = e2edt_metrics.get("new_class") or before_new
+    orig_old_macro = original_metrics.get("old_macro") or _macro_from_per_class(
+        original_metrics.get("per_class") or {}, old_names
+    )
 
     vs_original = {
         "old_class_delta": _delta_per_class(
@@ -183,16 +247,11 @@ def build_comparison_report(
             old_names,
         ),
         "old_macro_delta": {
-            "f1": float(
-                e2edt_metrics["old_macro"]["f1"] - original_metrics["old_macro"]["f1"]
-            ),
+            "f1": float(e2edt_metrics["old_macro"]["f1"] - orig_old_macro["f1"]),
             "recall": float(
-                e2edt_metrics["old_macro"]["recall"]
-                - original_metrics["old_macro"]["recall"]
+                e2edt_metrics["old_macro"]["recall"] - orig_old_macro["recall"]
             ),
-            "acc": float(
-                e2edt_metrics["old_macro"]["acc"] - original_metrics["old_macro"]["acc"]
-            ),
+            "acc": float(e2edt_metrics["old_macro"]["acc"] - orig_old_macro["acc"]),
         },
         "new_class_gain": {
             "f1": float(after_new["f1"] - before_new["f1"]),
@@ -201,27 +260,41 @@ def build_comparison_report(
             "note": "original target has no new-class logit; before=0",
         },
         "new_class_name": new_name,
+        "protocol_note": (
+            "original_target evaluated on old-class-only (2-class) test; "
+            "E2EDT/scratch on full 3-class test. "
+            "Old Δ = E2EDT@3 old − original@2 old; "
+            "new gain = E2EDT@3 new − 0."
+        ),
     }
 
-    scratch_labels = (scratch_resources.get("label_data") or {}).get("total")
+    scratch_label_data = scratch_resources.get("label_data") or {}
+    scratch_labels = scratch_label_data.get("total")
+    scratch_new = scratch_label_data.get("n_new_class_images")
     label_compare = {
         "e2edt_n_source_images": int(n_source_images),
         "e2edt_sample_ratio": sample_ratio,
         "e2edt_note": (
-            "Count is original images selected by SAMPLE_RATIO; "
+            "Count is original new-class images selected by SAMPLE_RATIO; "
             "patch/mask tensors are treated as augmentation and excluded."
         ),
+        "scratch_n_new_class_images": scratch_new,
+        "scratch_new_class_name": scratch_label_data.get("new_class_name") or new_name,
+        "scratch_note": (
+            "Primary compare uses new-class labeled train images only "
+            "(same axis as E2EDT sample_ratio source images)."
+        ),
         "scratch_n_train_images": scratch_labels,
-        "scratch_per_class": (scratch_resources.get("label_data") or {}).get("per_class"),
+        "scratch_per_class": scratch_label_data.get("per_class"),
         "difference_scratch_minus_e2edt": (
             None
-            if scratch_labels is None
-            else int(scratch_labels) - int(n_source_images)
+            if scratch_new is None
+            else int(scratch_new) - int(n_source_images)
         ),
         "ratio_e2edt_over_scratch": (
             None
-            if not scratch_labels
-            else float(n_source_images) / float(scratch_labels)
+            if not scratch_new
+            else float(n_source_images) / float(scratch_new)
         ),
     }
 
@@ -297,10 +370,12 @@ def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
     )
     ld = report["label_data"]
     lines.append(
-        f"- Label data: E2EDT sample_ratio images={ld.get('e2edt_n_source_images')} "
+        f"- New-class images: E2EDT sample_ratio={ld.get('e2edt_n_source_images')} "
         f"(ratio={ld.get('e2edt_sample_ratio')}); "
-        f"scratch train images={ld.get('scratch_n_train_images')}; "
-        f"diff(scratch-e2edt)={ld.get('difference_scratch_minus_e2edt')}"
+        f"scratch new-class={ld.get('scratch_n_new_class_images')} "
+        f"({ld.get('scratch_new_class_name')}); "
+        f"diff(scratch-e2edt)={ld.get('difference_scratch_minus_e2edt')}; "
+        f"scratch total train images={ld.get('scratch_n_train_images')}"
     )
     fl = report["flops"]
     lines.append(
@@ -308,28 +383,39 @@ def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
         f"scratch={fl.get('scratch_total_train_flops')}"
     )
     lines.append("")
+    vo = report["vs_original_target"]
     lines.append("## Per-class performance (F1 / recall / acc)")
-    lines.append("| class | E2EDT F1 | scratch F1 | original F1 | Δold (E2EDT-orig) F1 |")
+    lines.append(
+        "- Protocol: E2EDT/scratch on 3-class test; "
+        "original target on old-class-only (2-class) test. "
+        "Δold = E2EDT@3 − original@2; new-class original = N/A (gain vs 0)."
+    )
+    if vo.get("protocol_note"):
+        lines.append(f"- Note: {vo['protocol_note']}")
+    lines.append("| class | E2EDT F1 | scratch F1 | original F1 | Δ (E2EDT−orig) F1 |")
     lines.append("|---|---:|---:|---:|---:|")
     e = report["models"]["e2edt"]["per_class"]
     s = report["models"]["scratch"]["per_class"]
     o = report["models"]["original_target"]["per_class"]
-    deltas = report["vs_original_target"]["old_class_delta"]
-    new_gain = report["vs_original_target"]["new_class_gain"]
-    new_name = report["vs_original_target"]["new_class_name"]
+    deltas = vo["old_class_delta"]
+    new_gain = vo["new_class_gain"]
+    new_name = vo["new_class_name"]
     for name in names:
-        dlt = deltas.get(name, {}).get("f1") if name in deltas else (
-            new_gain.get("f1") if name == new_name else None
-        )
+        if name == new_name:
+            o_f1 = "N/A"
+            dlt = new_gain.get("f1")
+        else:
+            o_f1 = f"{o[name]['f1']:.4f}" if name in o else "N/A"
+            dlt = deltas.get(name, {}).get("f1") if name in deltas else None
         lines.append(
             f"| {name} | {e[name]['f1']:.4f} | {s[name]['f1']:.4f} | "
-            f"{o[name]['f1']:.4f} | "
+            f"{o_f1} | "
             f"{'' if dlt is None else f'{dlt:.4f}'} |"
         )
     lines.append("")
-    om = report["vs_original_target"]["old_macro_delta"]
+    om = vo["old_macro_delta"]
     lines.append(
-        f"- Old macro Δ (E2EDT − original): "
+        f"- Old macro Δ (E2EDT@3 − original@2): "
         f"F1={om['f1']:.4f}, recall={om['recall']:.4f}, acc={om['acc']:.4f}"
     )
     lines.append(
