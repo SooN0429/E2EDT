@@ -297,6 +297,29 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         device=device,
         batch_size=bs,
     )
+    print("[INFO] === inference time (E2EDT vs scratch) ===")
+    student.eval()
+    scratch_model.eval()
+    e2edt_inference = ceval.measure_inference_time(
+        lambda x: student.predict(x, detach=False),
+        test_root=test_root,
+        device=device,
+        batch_size=bs,
+    )
+    scratch_inference = ceval.measure_inference_time(
+        lambda x: scratch_model.predict(x, test_flag=1),
+        test_root=test_root,
+        device=device,
+        batch_size=bs,
+    )
+    print(
+        f"[INFO] inference E2EDT={e2edt_inference.get('ms_per_image'):.3f}ms/img "
+        f"({e2edt_inference.get('total_sec'):.3f}s); "
+        f"scratch={scratch_inference.get('ms_per_image'):.3f}ms/img "
+        f"({scratch_inference.get('total_sec'):.3f}s); batch={bs}"
+    )
+    common.save_json(os.path.join(out_dir, "inference_e2edt.json"), e2edt_inference)
+    common.save_json(os.path.join(out_dir, "inference_scratch.json"), scratch_inference)
     test_old_root = ceval.materialize_old_class_test_root(
         test_root=test_root,
         old_classes=target_classes,
@@ -326,6 +349,8 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
         n_source_images=n_source_images,
         sample_ratio=sample_ratio,
         eval_class_names=eval_classes,
+        e2edt_inference=e2edt_inference,
+        scratch_inference=scratch_inference,
     )
     common.save_json(os.path.join(out_dir, "comparison_report.json"), report)
     md = ceval.comparison_report_to_markdown(report)

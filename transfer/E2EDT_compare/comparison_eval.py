@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -201,6 +202,60 @@ def evaluate_predict_fn(
     }
 
 
+def _sync_device(device: torch.device) -> None:
+    if device.type == "cuda" and torch.cuda.is_available():
+        torch.cuda.synchronize(device)
+
+
+@torch.no_grad()
+def measure_inference_time(
+    predict_fn: Callable[[torch.Tensor], torch.Tensor],
+    test_root: str,
+    device: torch.device,
+    batch_size: int = 32,
+    warmup_batches: int = 5,
+) -> Dict[str, Any]:
+    """
+    Wall-clock inference on ImageFolder test (same preprocess as evaluate_predict_fn).
+
+    Warmup a few batches, synchronize CUDA, then time a full loader pass (forward only).
+    """
+    ds = datasets.ImageFolder(root=test_root, transform=IMAGENET_TRANSFORM)
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=0)
+    n_images = len(ds)
+    warm = max(int(warmup_batches), 0)
+
+    # Warmup
+    for i, (x, _y) in enumerate(loader):
+        if i >= warm:
+            break
+        _ = predict_fn(x.to(device))
+    _sync_device(device)
+
+    n_timed = 0
+    _sync_device(device)
+    t0 = time.perf_counter()
+    for x, _y in loader:
+        x = x.to(device)
+        _ = predict_fn(x)
+        n_timed += int(x.size(0))
+    _sync_device(device)
+    total_sec = float(time.perf_counter() - t0)
+
+    ms_per_image = (
+        (total_sec * 1000.0 / float(n_timed)) if n_timed > 0 else None
+    )
+    return {
+        "total_sec": total_sec,
+        "ms_per_image": ms_per_image,
+        "n_images": int(n_images),
+        "n_timed_images": int(n_timed),
+        "batch_size": int(batch_size),
+        "warmup_batches": int(warm),
+        "test_root": os.path.abspath(test_root),
+    }
+
+
 def _delta_per_class(
     after: Dict[str, Dict[str, float]],
     before: Dict[str, Dict[str, float]],
@@ -228,6 +283,8 @@ def build_comparison_report(
     n_source_images: int,
     sample_ratio: Any,
     eval_class_names: Sequence[str],
+    e2edt_inference: Optional[Dict[str, Any]] = None,
+    scratch_inference: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     n_old = len(eval_class_names) - 1
     old_names = list(eval_class_names[:n_old])
@@ -327,6 +384,25 @@ def build_comparison_report(
         "scratch_detail": scratch_resources.get("flops"),
     }
 
+    e_inf = e2edt_inference or {}
+    s_inf = scratch_inference or {}
+    e_ms = e_inf.get("ms_per_image")
+    s_ms = s_inf.get("ms_per_image")
+    inference_compare = {
+        "e2edt": e2edt_inference,
+        "scratch": scratch_inference,
+        "ratio_e2edt_over_scratch": (
+            None
+            if e_ms is None or not s_ms
+            else float(e_ms) / float(s_ms)
+        ),
+        "difference_scratch_minus_e2edt_ms_per_image": (
+            None
+            if e_ms is None or s_ms is None
+            else float(s_ms) - float(e_ms)
+        ),
+    }
+
     vs_scratch_perf = {
         "e2edt_per_class": e2edt_metrics["per_class"],
         "scratch_per_class": scratch_metrics["per_class"],
@@ -349,6 +425,7 @@ def build_comparison_report(
             "original_target": original_metrics,
         },
         "time": time_compare,
+        "inference": inference_compare,
         "label_data": label_compare,
         "flops": flops_compare,
         "vs_scratch_performance": vs_scratch_perf,
@@ -382,6 +459,17 @@ def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
         f"- Train FLOPs: distill={fl.get('distill_total_train_flops')}, "
         f"scratch={fl.get('scratch_total_train_flops')}"
     )
+    inf = report.get("inference") or {}
+    e_inf = inf.get("e2edt") or {}
+    s_inf = inf.get("scratch") or {}
+    if e_inf.get("ms_per_image") is not None and s_inf.get("ms_per_image") is not None:
+        lines.append(
+            f"- Inference: E2EDT={e_inf['ms_per_image']:.3f}ms/img "
+            f"({e_inf.get('total_sec'):.3f}s), "
+            f"scratch={s_inf['ms_per_image']:.3f}ms/img "
+            f"({s_inf.get('total_sec'):.3f}s); "
+            f"batch={e_inf.get('batch_size', s_inf.get('batch_size'))}"
+        )
     lines.append("")
     vo = report["vs_original_target"]
     lines.append("## Per-class performance (F1 / recall / acc)")
