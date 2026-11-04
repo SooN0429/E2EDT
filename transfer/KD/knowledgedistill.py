@@ -35,6 +35,7 @@ _DEFAULT_OUTPUT_ROOT = os.path.join(_SCRIPT_DIR, "distill_result")
 _DEFAULT_TRAINING_REPORT_ROOT = os.path.join(_NODE_TRAINING_DIR, "training_report")
 
 _LOC_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "localization"))
+_PATCH_GEN_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "patch_data_generate"))
 
 if _NODE_TRAINING_DIR not in sys.path:
     sys.path.insert(0, _NODE_TRAINING_DIR)
@@ -44,9 +45,12 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 if _LOC_DIR not in sys.path:
     sys.path.insert(0, _LOC_DIR)
+if _PATCH_GEN_DIR not in sys.path:
+    sys.path.insert(0, _PATCH_GEN_DIR)
 
 from model_architecture import backbone_multi, model_resnet18  # noqa: E402
 import node_traindata_generate as ntdg  # noqa: E402
+import patch_data_generate as patch_gen  # noqa: E402
 import specific_localziation as loc  # noqa: E402
 
 
@@ -255,25 +259,41 @@ def resolve_target(
     }
 
 
-def resolve_localization(localization_run_dir: str) -> Dict[str, Any]:
-    run_dir = os.path.abspath(localization_run_dir)
-    if not os.path.isdir(run_dir):
-        raise FileNotFoundError(f"localization_run_dir not found: {run_dir}")
-
+def _load_compact_from_dir(run_dir: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     compact_pt = os.path.join(run_dir, "compact_state_dict.pt")
     compact_meta_path = os.path.join(run_dir, "compact_meta.json")
-    loc_cfg_path = os.path.join(run_dir, "config.json")
-    sel_path = os.path.join(run_dir, "selected_indices.json")
     if not os.path.isfile(compact_pt):
         raise FileNotFoundError(f"missing compact_state_dict.pt under {run_dir}")
     if not os.path.isfile(compact_meta_path):
         raise FileNotFoundError(f"missing compact_meta.json under {run_dir}")
+    compact_meta = load_json(compact_meta_path)
+    compact_blob = torch.load(compact_pt, map_location="cpu")
+    return compact_blob, compact_meta
+
+
+def resolve_localization(
+    localization_run_dir: str,
+    *,
+    patch_run_dir_override: Optional[str] = None,
+    surrogate_run_dir_override: Optional[str] = None,
+    compact_run_dir_override: Optional[str] = None,
+) -> Dict[str, Any]:
+    run_dir = os.path.abspath(localization_run_dir)
+    if not os.path.isdir(run_dir):
+        raise FileNotFoundError(f"localization_run_dir not found: {run_dir}")
+
+    loc_cfg_path = os.path.join(run_dir, "config.json")
+    sel_path = os.path.join(run_dir, "selected_indices.json")
     if not os.path.isfile(loc_cfg_path):
         raise FileNotFoundError(f"missing config.json under {run_dir}")
 
     loc_cfg = load_json(loc_cfg_path)
-    compact_meta = load_json(compact_meta_path)
-    compact_blob = torch.load(compact_pt, map_location="cpu")
+    compact_dir = (
+        os.path.abspath(compact_run_dir_override)
+        if compact_run_dir_override
+        else run_dir
+    )
+    compact_blob, compact_meta = _load_compact_from_dir(compact_dir)
     extracted = (
         compact_blob.get("extracted_layer")
         or loc_cfg.get("resolved_extracted_layer")
@@ -289,10 +309,13 @@ def resolve_localization(localization_run_dir: str) -> Dict[str, Any]:
     if not source_classes:
         source_classes = list(sel.get("class_names") or [])
 
-    patch_run_dir = loc_cfg.get("patch_run_dir")
+    patch_run_dir = patch_run_dir_override or loc_cfg.get("patch_run_dir")
     if not patch_run_dir:
         raise ValueError(f"localization config missing patch_run_dir: {loc_cfg_path}")
     patch_run_dir = os.path.abspath(patch_run_dir)
+    surrogate_run_dir = os.path.abspath(
+        surrogate_run_dir_override or run_dir
+    )
 
     # Prefer patch config node_specs if source classes still missing
     if not source_classes:
@@ -336,6 +359,8 @@ def resolve_localization(localization_run_dir: str) -> Dict[str, Any]:
 
     return {
         "run_dir": run_dir,
+        "compact_run_dir": compact_dir,
+        "surrogate_run_dir": surrogate_run_dir,
         "compact_blob": compact_blob,
         "compact_meta": compact_meta,
         "loc_cfg": loc_cfg,
@@ -738,15 +763,155 @@ def load_surrogate_W_by_image(loc_run_dir: str) -> Dict[str, np.ndarray]:
     return W_by
 
 
+def _patch_grid_from_resolved(pcfg: Dict[str, Any]) -> Tuple[int, int, int]:
+    nested = pcfg.get("patch_config") if isinstance(pcfg.get("patch_config"), dict) else {}
+    grid_rows = int(
+        pcfg.get("GRID_ROWS")
+        or nested.get("GRID_ROWS")
+        or pcfg.get("grid_rows")
+        or 0
+    )
+    grid_cols = int(
+        pcfg.get("GRID_COLS")
+        or nested.get("GRID_COLS")
+        or pcfg.get("grid_cols")
+        or 0
+    )
+    image_size = int(
+        pcfg.get("IMAGE_SIZE")
+        or nested.get("IMAGE_SIZE")
+        or 224
+    )
+    return grid_rows, grid_cols, image_size
+
+
+def ensure_masked_tensors_on_disk(
+    patch_run_dir: str,
+    rows: Optional[Sequence[Dict[str, Any]]] = None,
+) -> int:
+    """Rebuild missing masked .pt files from manifest metadata (post-cleanup).
+
+    Returns number of tensors written.
+    """
+    patch_run_dir = os.path.abspath(patch_run_dir)
+    if rows is None:
+        manifest_path = os.path.join(patch_run_dir, "manifest.jsonl")
+        if not os.path.isfile(manifest_path):
+            raise FileNotFoundError(f"manifest not found under {patch_run_dir}")
+        rows = loc.load_manifest(manifest_path)
+
+    missing: List[Dict[str, Any]] = []
+    for r in rows:
+        tensor_path = r.get("masked_tensor_path") or r.get("tensor_path")
+        if not tensor_path:
+            continue
+        if not os.path.isabs(tensor_path):
+            tensor_path = os.path.join(patch_run_dir, tensor_path)
+        if not os.path.isfile(tensor_path):
+            missing.append({**r, "masked_tensor_path": tensor_path})
+    if not missing:
+        return 0
+
+    cfg_path = os.path.join(patch_run_dir, "config_resolved.json")
+    if not os.path.isfile(cfg_path):
+        raise FileNotFoundError(
+            f"need config_resolved.json to rebuild tensors under {patch_run_dir}"
+        )
+    pcfg = load_json(cfg_path)
+    nested = pcfg.get("patch_config") if isinstance(pcfg.get("patch_config"), dict) else {}
+    grid_rows, grid_cols, image_size = _patch_grid_from_resolved(pcfg)
+    if not grid_rows or not grid_cols:
+        raise ValueError(f"GRID_ROWS/COLS missing in {cfg_path}")
+
+    training_report = pcfg.get("training_report") or {}
+    selection = pcfg.get("selection") or {}
+    node = selection.get("node") or pcfg.get("node") or pcfg.get("node_name")
+    if not node:
+        # fall back to first manifest row
+        node = missing[0].get("node")
+    attack_class = (
+        selection.get("attack_class")
+        or pcfg.get("attack_class")
+        or missing[0].get("attack_class")
+    )
+    if not node or not attack_class:
+        raise ValueError(
+            f"cannot resolve node/attack_class for tensor rebuild: {patch_run_dir}"
+        )
+
+    blended_alpha = ntdg.resolve_blended_alpha(
+        attack_class,
+        float(training_report["blended_alpha_square"]),
+        float(training_report["blended_alpha_hello_kitty"]),
+    )
+    node_specs = (training_report.get("node_specs") or {}).get(node) or [attack_class]
+    triggers = ntdg.load_trigger_arrays(
+        training_report["trigger_dir"], list(node_specs)
+    )
+    trigger_rgb, mask_rgb = triggers[attack_class]
+    if trigger_rgb is None or mask_rgb is None:
+        raise RuntimeError(f"Missing trigger/mask for attack class {attack_class!r}")
+
+    baseline = patch_gen.resolve_mask_baseline(
+        nested.get("MASK_BASELINE") or pcfg.get("MASK_BASELINE") or "imagenet_mean_normalized",
+        nested.get("MASK_BASELINE_CHANNEL_CONSTANTS")
+        or pcfg.get("MASK_BASELINE_CHANNEL_CONSTANTS"),
+        image_size,
+        image_size,
+    )
+
+    by_image: Dict[str, List[Dict[str, Any]]] = {}
+    for r in missing:
+        by_image.setdefault(str(r["image_id"]), []).append(r)
+
+    n_written = 0
+    print(
+        f"[INFO] rebuilding {len(missing)} missing masked tensors "
+        f"under {patch_run_dir} ({len(by_image)} images)"
+    )
+    for image_id, glist in by_image.items():
+        source_face_path = glist[0]["source_face_path"]
+        if not os.path.isfile(source_face_path):
+            raise FileNotFoundError(
+                f"source_face_path missing for {image_id}: {source_face_path}"
+            )
+        x = patch_gen.poisoned_tensor_from_source(
+            source_face_path=source_face_path,
+            trigger_rgb=trigger_rgb,
+            mask_rgb=mask_rgb,
+            class_name=attack_class,
+            blended_alpha=float(blended_alpha),
+            transform=patch_gen._default_transform(image_size),
+        )
+        for r in glist:
+            b = np.asarray(r["binary_patch_mask"], dtype=np.int64)
+            if b.ndim == 1:
+                b = b.reshape(grid_rows, grid_cols)
+            spatial = patch_gen.patch_mask_to_spatial(b, image_size, image_size)
+            masked = patch_gen.apply_mask_after_norm(x, spatial, baseline)
+            tensor_path = r["masked_tensor_path"]
+            os.makedirs(os.path.dirname(tensor_path), exist_ok=True)
+            torch.save(masked.cpu(), tensor_path)
+            n_written += 1
+    print(f"[INFO] wrote {n_written} masked tensors")
+    return n_written
+
+
 class DistillPatchDataset(Dataset):
-    """Patch tensors + binary mask → g_i(b) full source logits."""
+    """Patch tensors + binary mask → g_i(b) full source logits.
+
+    If tensors/ were cleaned after localization, missing .pt files are rebuilt
+    from manifest + config_resolved (same path as localization_quality).
+    """
 
     def __init__(
         self,
         patch_run_dir: str,
         loc_run_dir: str,
         include_reference: bool = True,
+        surrogate_run_dir: Optional[str] = None,
     ):
+        patch_run_dir = os.path.abspath(patch_run_dir)
         manifest_path = os.path.join(patch_run_dir, "manifest.jsonl")
         if not os.path.isfile(manifest_path):
             # some generators may use manifest.json
@@ -763,15 +928,18 @@ class DistillPatchDataset(Dataset):
             if not isinstance(rows, list):
                 raise TypeError("manifest.json must be a list")
 
+        ensure_masked_tensors_on_disk(patch_run_dir, rows=rows)
+
         groups = loc.group_manifest_by_image(rows, include_reference=include_reference)
-        W_by = load_surrogate_W_by_image(loc_run_dir)
+        W_by = load_surrogate_W_by_image(
+            os.path.abspath(surrogate_run_dir or loc_run_dir)
+        )
 
         # grid from patch config if present
         patch_cfg_path = os.path.join(patch_run_dir, "config_resolved.json")
         if os.path.isfile(patch_cfg_path):
             pcfg = load_json(patch_cfg_path)
-            grid_rows = int(pcfg.get("GRID_ROWS") or pcfg.get("grid_rows") or 0)
-            grid_cols = int(pcfg.get("GRID_COLS") or pcfg.get("grid_cols") or 0)
+            grid_rows, grid_cols, _ = _patch_grid_from_resolved(pcfg)
         else:
             grid_rows = grid_cols = 0
 
@@ -1259,7 +1427,12 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         device_s = "cpu"
     device = torch.device(device_s)
 
-    loc_info = resolve_localization(cfg["localization_run_dir"])
+    loc_info = resolve_localization(
+        cfg["localization_run_dir"],
+        patch_run_dir_override=cfg.get("patch_run_dir"),
+        surrogate_run_dir_override=cfg.get("surrogate_run_dir"),
+        compact_run_dir_override=cfg.get("compact_run_dir"),
+    )
     target_info = resolve_target(cfg)
 
     extracted = loc_info["extracted_layer"]
@@ -1297,6 +1470,10 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         "config": {k: v for k, v in cfg.items() if not k.startswith("_")},
         "resolved": {
             "localization_run_dir": loc_info["run_dir"],
+            "compact_run_dir": loc_info.get("compact_run_dir", loc_info["run_dir"]),
+            "surrogate_run_dir": loc_info.get(
+                "surrogate_run_dir", loc_info["run_dir"]
+            ),
             "patch_run_dir": loc_info["patch_run_dir"],
             "extracted_layer": extracted,
             "attack_class": new_class,
@@ -1332,6 +1509,7 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         patch_run_dir=loc_info["patch_run_dir"],
         loc_run_dir=loc_info["run_dir"],
         include_reference=bool(cfg.get("include_reference", True)),
+        surrogate_run_dir=loc_info.get("surrogate_run_dir"),
     )
     distill_loader = DataLoader(
         distill_ds,
