@@ -2,8 +2,9 @@
 """Parallel-insert compact subnet into a target model and distill adapter + expanded FC.
 
 Pipeline:
-  resolve → build ParallelInsertStudent → epoch-0 sanity → train on patches
-  → generate temporary eval set (old+new classes) → three-way metrics → cleanup.
+  resolve → build ParallelInsertStudent → epoch-0 sanity → cache h_R (outside
+  wall-clock) → train from cut-point (student.forward_from_hr + teacher
+  test_flag=0) → optional eval set → metrics → cleanup.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import f1_score, roc_auc_score
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 from torchvision import datasets, transforms
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -577,12 +578,12 @@ class ParallelInsertStudent(nn.Module):
             x = self.mf[skey](x)
         return x
 
-    def forward(
+    def forward_from_hr(
         self,
-        x: torch.Tensor,
+        h_r: torch.Tensor,
         detach: bool = False,
     ) -> torch.Tensor:
-        h_r = self.forward_prefix(x)
+        """Forward from cut-point feature h_R (no prefix)."""
         z_t = self.forward_tail(h_r)
         if detach:
             feat = torch.flatten(self.avgpool(z_t), 1)
@@ -592,6 +593,13 @@ class ParallelInsertStudent(nn.Module):
         fused = torch.cat([z_t, z_f], dim=1)
         feat = torch.flatten(self.avgpool(fused), 1)
         return self.classifier_layer(feat)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        detach: bool = False,
+    ) -> torch.Tensor:
+        return self.forward_from_hr(self.forward_prefix(x), detach=detach)
 
     def predict(self, x: torch.Tensor, detach: bool = False) -> torch.Tensor:
         return self.forward(x, detach=detach)
@@ -1031,6 +1039,44 @@ def compute_distill_losses(
     return total, l_old, l_new
 
 
+@torch.no_grad()
+def extract_distill_hr_features(
+    student: ParallelInsertStudent,
+    image_loader: DataLoader,
+    device: torch.device,
+) -> Tuple[torch.Tensor, torch.Tensor, float, List[int]]:
+    """
+    Precompute cut-point h_R for all distill samples (outside wall-clock).
+
+    Returns (hr_features, g_logits, feature_extract_sec, hr_feature_shape_chw).
+    """
+    import time as _time
+
+    was_training = student.training
+    student.eval()
+    hrs: List[torch.Tensor] = []
+    gs: List[torch.Tensor] = []
+    t0 = _time.time()
+    for x, g_logits, _iid, _mid in image_loader:
+        x = x.to(device)
+        hrs.append(student.forward_prefix(x).detach().cpu())
+        if not torch.is_tensor(g_logits):
+            g_logits = torch.as_tensor(g_logits)
+        gs.append(g_logits.detach().cpu() if g_logits.is_floating_point() else g_logits.cpu())
+    feature_extract_sec = float(_time.time() - t0)
+    student.train(was_training)
+
+    hr_all = torch.cat(hrs, dim=0)
+    g_all = torch.cat(gs, dim=0).float()
+    hr_shape = [int(d) for d in hr_all.shape[1:]]
+    print(
+        f"[INFO] distill h_R extract: n={hr_all.shape[0]} "
+        f"shape={tuple(hr_all.shape)} time={feature_extract_sec:.2f}s "
+        f"(excluded from wall_clock)"
+    )
+    return hr_all, g_all, feature_extract_sec, hr_shape
+
+
 def train_distill(
     student: ParallelInsertStudent,
     teacher: nn.Module,
@@ -1040,7 +1086,16 @@ def train_distill(
     clean_idx_student: Optional[int],
     clean_idx_src: Optional[int],
     device: torch.device,
+    *,
+    feature_extract_sec: float = 0.0,
+    hr_feature_shape: Optional[Sequence[int]] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Distill from cut-point features h_R.
+
+    Loader yields ``(h_r, g_logits)``. Teacher uses ``test_flag=0`` (tail from h_R);
+    student uses ``forward_from_hr``. Prefix extract time is not included in wall_clock.
+    """
     import time as _time
 
     opt = torch.optim.Adam(list(student.trainable_parameters()), lr=float(cfg["lr"]))
@@ -1070,6 +1125,11 @@ def train_distill(
     else:
         print("[INFO] distill early stopping disabled (patience<=0)")
 
+    print(
+        "[INFO] distill train from h_R: student.forward_from_hr + "
+        "teacher.predict(test_flag=0); no val loop"
+    )
+
     for epoch in range(epochs_max):
         student.train()
         student.mf.eval()
@@ -1081,12 +1141,17 @@ def train_distill(
         sum_old_abs = 0.0
         n = 0
         t0 = _time.time()
-        for x, g_logits, _iid, _mid in loader:
-            x = x.to(device)
+        for batch in loader:
+            if len(batch) == 2:
+                h_r, g_logits = batch
+            else:
+                # Backward-compatible: (x_or_hr, g_logits, ...)
+                h_r, g_logits = batch[0], batch[1]
+            h_r = h_r.to(device)
             g_logits = g_logits.to(device)
             with torch.no_grad():
-                t_old = teacher.predict(x, test_flag=1)
-            s_logits = student.predict(x, detach=False)
+                t_old = teacher.predict(h_r, test_flag=0)
+            s_logits = student.forward_from_hr(h_r, detach=False)
             loss, l_old, l_new = compute_distill_losses(
                 s_logits,
                 t_old,
@@ -1103,7 +1168,7 @@ def train_distill(
             loss.backward()
             opt.step()
 
-            bs = x.size(0)
+            bs = h_r.size(0)
             sum_tot += float(loss.item()) * bs
             sum_old += float(l_old.item()) * bs
             sum_new += float(l_new.item()) * bs
@@ -1181,6 +1246,13 @@ def train_distill(
         "best_train_loss": float(best_loss) if best_adapter is not None else None,
         "epochs_ran": int(epochs_ran),
         "epochs_max": epochs_max,
+        "feature_extract_sec": float(feature_extract_sec),
+        "hr_feature_shape": list(hr_feature_shape) if hr_feature_shape is not None else None,
+        "train_input": "cutpoint_hr",
+        "wall_clock_note": (
+            "Excludes prefix/h_R extract; includes student.forward_from_hr + "
+            "teacher.predict(h_R, test_flag=0); no val loop."
+        ),
     }
     return history, stats
 
@@ -1573,12 +1645,6 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         include_reference=bool(cfg.get("include_reference", True)),
         surrogate_run_dir=loc_info.get("surrogate_run_dir"),
     )
-    distill_loader = DataLoader(
-        distill_ds,
-        batch_size=int(cfg.get("batch_size", 16)),
-        shuffle=True,
-        num_workers=0,
-    )
     sanity_loader = DataLoader(
         distill_ds,
         batch_size=int(cfg.get("batch_size", 16)),
@@ -1602,15 +1668,35 @@ def run_distill(cfg: Dict[str, Any]) -> str:
         f"mean_abs={sanity['mean_abs_diff']:.6g}"
     )
 
+    # Cache h_R before wall-clock (align with scratch feature extract boundary)
+    extract_loader = DataLoader(
+        distill_ds,
+        batch_size=int(cfg.get("batch_size", 16)),
+        shuffle=False,
+        num_workers=0,
+    )
+    hr_all, g_all, feature_extract_sec, hr_shape = extract_distill_hr_features(
+        student, extract_loader, device
+    )
+    hr_train_ds = TensorDataset(hr_all, g_all)
+    hr_train_loader = DataLoader(
+        hr_train_ds,
+        batch_size=int(cfg.get("batch_size", 16)),
+        shuffle=True,
+        num_workers=0,
+    )
+
     history, train_stats = train_distill(
         student,
         teacher,
-        distill_loader,
+        hr_train_loader,
         cfg=cfg,
         attack_idx_src=loc_info["attack_idx_src"],
         clean_idx_student=clean_idx_student,
         clean_idx_src=clean_idx_src,
         device=device,
+        feature_extract_sec=feature_extract_sec,
+        hr_feature_shape=hr_shape,
     )
     _write_csv(os.path.join(out_dir, "train_history.csv"), history)
     save_json(os.path.join(out_dir, "distill_train_stats.json"), train_stats)

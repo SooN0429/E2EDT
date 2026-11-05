@@ -370,6 +370,14 @@ def build_comparison_report(
         "ratio_distill_over_scratch": (
             None if not s_sec or d_sec is None else d_sec / s_sec
         ),
+        "protocol_note": (
+            "Distill wall-clock excludes prefix/h_R extract; includes "
+            "student.forward_from_hr + teacher.predict(h_R, test_flag=0); "
+            "no val loop. Scratch wall-clock excludes feature extract; "
+            "includes feature→tail train + full-image val."
+        ),
+        "distill_feature_extract_sec": distill_resources.get("feature_extract_sec"),
+        "distill_wall_clock_note": distill_resources.get("wall_clock_note"),
     }
 
     d_flops = (distill_resources.get("flops") or {}).get("total_train_flops")
@@ -382,6 +390,23 @@ def build_comparison_report(
         ),
         "distill_detail": distill_resources.get("flops"),
         "scratch_detail": scratch_resources.get("flops"),
+        "protocol_note": (
+            "Both total_train_flops use forward×steps×3 from cut-point: "
+            "distill=student.forward_from_hr; scratch=feature→tail (test_flag=0). "
+            "Teacher cut-point forward (if recorded) is excluded from distill total."
+        ),
+        "distill_flops_path": (distill_resources.get("forward_profile") or {}).get(
+            "flops_path"
+        ),
+        "scratch_flops_path": (scratch_resources.get("forward_profile") or {}).get(
+            "flops_path"
+        ),
+        "teacher_forward_flops_per_step": distill_resources.get(
+            "teacher_forward_flops_per_step"
+        ),
+        "teacher_total_forward_flops": distill_resources.get(
+            "teacher_total_forward_flops"
+        ),
     }
 
     e_inf = e2edt_inference or {}
@@ -445,6 +470,13 @@ def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
         and t.get("scratch_wall_clock_sec") is not None
         else f"- Wall-clock: {t}"
     )
+    if t.get("protocol_note"):
+        lines.append(f"- Wall-clock protocol: {t['protocol_note']}")
+    if t.get("distill_feature_extract_sec") is not None:
+        lines.append(
+            f"- Distill h_R extract (excluded from wall-clock): "
+            f"{float(t['distill_feature_extract_sec']):.2f}s"
+        )
     ld = report["label_data"]
     lines.append(
         f"- New-class images: E2EDT sample_ratio={ld.get('e2edt_n_source_images')} "
@@ -459,6 +491,13 @@ def comparison_report_to_markdown(report: Dict[str, Any]) -> str:
         f"- Train FLOPs: distill={fl.get('distill_total_train_flops')}, "
         f"scratch={fl.get('scratch_total_train_flops')}"
     )
+    if fl.get("protocol_note"):
+        lines.append(f"- FLOPs protocol: {fl['protocol_note']}")
+    if fl.get("distill_flops_path") or fl.get("scratch_flops_path"):
+        lines.append(
+            f"- FLOPs path: distill={fl.get('distill_flops_path')}, "
+            f"scratch={fl.get('scratch_flops_path')}"
+        )
     inf = report.get("inference") or {}
     e_inf = inf.get("e2edt") or {}
     s_inf = inf.get("scratch") or {}

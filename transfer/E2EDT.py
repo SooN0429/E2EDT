@@ -215,24 +215,62 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
     extracted = loc_info["extracted_layer"]
     eval_classes = list(target_classes) + [attack_class]
 
-    # Distill FLOPs (one forward of student on a patch-sized or ImageNet-sized tensor)
+    # Distill FLOPs: student from cut-point h_R (align with scratch feature→tail)
     distill_stats = common.load_json(
         os.path.join(distill_out, "distill_train_stats.json")
     )
+    hr_shape = distill_stats.get("hr_feature_shape")
     try:
-        # Use ImageNet-size input consistent with eval / typical image forward
-        example = torch.randn(1, 3, 224, 224, device=device)
+        if not hr_shape or len(hr_shape) < 1:
+            raise ValueError(
+                "distill_train_stats missing hr_feature_shape; "
+                "cannot measure cut-point FLOPs"
+            )
+        # Example cut-point feature matching cached distill h_R
+        example = torch.randn(1, *[int(d) for d in hr_shape], device=device)
         flop_info = cres.measure_forward_flops(
-            lambda x: student.predict(x, detach=False),
+            lambda x: student.forward_from_hr(x, detach=False),
             example,
             model_for_profile=student,
         )
+        flop_info["flops_path"] = "cutpoint_hr_student"
+        flop_info["hr_feature_shape"] = [int(d) for d in hr_shape]
+
+        # Optional: teacher cut-point forward (no_grad, ×1 per step; not in main total)
+        teacher_fwd = None
+        try:
+            t_info = cres.measure_forward_flops(
+                lambda x: teacher.predict(x, test_flag=0),
+                example,
+                model_for_profile=teacher,
+            )
+            teacher_fwd = float(t_info["forward_flops"])
+        except Exception as te:  # noqa: BLE001
+            print(f"[WARN] teacher cut-point FLOPs measure failed: {te}")
+
+        n_steps = int(distill_stats["n_train_steps"])
         distill_resources = cres.pack_resource_report(
             wall_clock_sec=float(distill_stats["wall_clock_sec"]),
-            n_train_steps=int(distill_stats["n_train_steps"]),
+            n_train_steps=n_steps,
             forward_flops=float(flop_info["forward_flops"]),
             epoch_times=list(distill_stats.get("epoch_times_sec") or []),
-            extra={"forward_profile": flop_info, "label_data_note": "see comparison"},
+            extra={
+                "forward_profile": flop_info,
+                "label_data_note": "see comparison",
+                "feature_extract_sec": distill_stats.get("feature_extract_sec"),
+                "train_input": distill_stats.get("train_input", "cutpoint_hr"),
+                "wall_clock_note": distill_stats.get("wall_clock_note"),
+                "teacher_forward_flops_per_step": teacher_fwd,
+                "teacher_total_forward_flops": (
+                    None
+                    if teacher_fwd is None
+                    else float(teacher_fwd) * float(n_steps)
+                ),
+                "teacher_flops_note": (
+                    "Teacher is no_grad (×1/step from h_R); not included in "
+                    "total_train_flops (student ×3×steps only)."
+                ),
+            },
         )
     except Exception as e:  # noqa: BLE001
         print(f"[WARN] distill FLOPs measure failed: {e}")
@@ -241,6 +279,11 @@ def run_e2edt_stage2(cfg: Dict[str, Any]) -> str:
             n_train_steps=int(distill_stats["n_train_steps"]),
             forward_flops=None,
             epoch_times=list(distill_stats.get("epoch_times_sec") or []),
+            extra={
+                "feature_extract_sec": distill_stats.get("feature_extract_sec"),
+                "train_input": distill_stats.get("train_input"),
+                "wall_clock_note": distill_stats.get("wall_clock_note"),
+            },
         )
     common.save_json(
         os.path.join(out_dir, "distill_resources.json"), distill_resources
